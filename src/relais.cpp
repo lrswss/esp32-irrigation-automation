@@ -95,56 +95,73 @@ void unblockRelais() {
 void setRelais(uint8_t num, bool on) {
     uint32_t blockTimeSecs;
     bool valveOpen = false;
-    char buf[16];
+    char logmsg[32];
 
-    blockTimeSecs = getLocalTime() - pintime[num];
-    if (on) {
-        if (blockTimeSecs > (switchesPrefs.relaisBlockSecs)) {
-            digitalWrite(pinmap[num][0], 0); // active low
-            pinstate |= pinmap[num][1];
-            pinstate &= ~pinmap[num][2];
-            sprintf(buf, "%s on", pinnames[num]);
+    if (num != 0) { // valves only
+        if (on) {
+            blockTimeSecs = getLocalTime() - pintime[num];
+            if (blockTimeSecs > (switchesPrefs.relaisBlockSecs)) {
+                if ((pinstate & pinmap[num][1]) == 0) {
+                    digitalWrite(pinmap[num][0], 0); // active low
+                    pinstate |= pinmap[num][1];
+                    pinstate &= ~pinmap[num][2];
+                    Serial.println(millis());
+                    Serial.printf(": Opened %s", pinnames[num]);
+                    sprintf(logmsg, "%s on", pinnames[num]);
+                    logMsg(logmsg);
 
-            // block other relais if one is open to keep up pressure
-            for (uint8_t i = 1; i < (sizeof(pinmap) / sizeof(pinmap[0])); i++) {
-                 if (i != num)
-                     pinstate |= pinmap[i][2];
+                    // block other relais if one is open to keep up pressure
+                    for (uint8_t i = 1; i < (sizeof(pinmap) / sizeof(pinmap[0])); i++) {
+                        if (i != num)
+                            pinstate |= pinmap[i][2];
+                    }
+                }
+            } else {
+                Serial.println(millis());
+                Serial.printf(": Relais %s blocked for %d secs!\n", pinnames[num],
+                    ((switchesPrefs.relaisBlockSecs) - blockTimeSecs));
+                return;
             }
         } else {
-            Serial.println(millis());
-            Serial.printf(": Relais %s blocked for %d secs!\n", pinnames[num], 
-                ((switchesPrefs.relaisBlockSecs) - blockTimeSecs));
-            return;
-        }
-
-    } else {
-        if ((pinstate & pinmap[num][1]) != 0) {
-            digitalWrite(pinmap[num][0], 1);
-            pintime[num] = getLocalTime(); // remember open valve time
-            pinstate &= ~pinmap[num][1];
-            pinstate |= pinmap[num][2]; // blocks this relais for a while
-            sprintf(buf, "%s off", pinnames[num]);
+            if ((pinstate & pinmap[num][1]) != 0) {
+                digitalWrite(pinmap[num][0], 1);
+                pintime[num] = getLocalTime(); // remember open valve time
+                pinstate &= ~pinmap[num][1];
+                pinstate |= pinmap[num][2]; // blocks this relais for a while
+                Serial.print(millis());
+                Serial.printf(": Closed %s", pinnames[num]);
+                sprintf(logmsg, "%s off", pinnames[num]);
+                logMsg(logmsg);
+            }
         }
     }
-    Serial.print(millis());
-    Serial.print(F(": Switch relais "));
-    Serial.println(buf);  
-    logMsg(buf);
 
     // turn on pump if at least one valve is open
     for (uint8_t i = 1; i < (sizeof(pinmap) / sizeof(pinmap[0])); i++) {
         if ((pinstate & pinmap[i][1]) != 0)
             valveOpen = true;
     }
-    if (valveOpen) {   
+
+    // switch pump
+    if (valveOpen || (!num && on)) {
         if ((pinstate & pinmap[0][1]) == 0) {
             pintime[0] = getLocalTime(); 
             digitalWrite(switchesPrefs.pinPump, 1);
             pinstate |= pinmap[0][1];
+            Serial.print(millis());
+            Serial.println(F(": Pump on"));
+            sprintf(logmsg, "pump on, water %d cm", sensors.waterLevel);
+            logMsg(logmsg);
         }
-    } else {
-        digitalWrite(switchesPrefs.pinPump, 0);
-        pinstate &= ~pinmap[0][1];
+    } else if (!valveOpen || (!num && !on)) {
+        if ((pinstate & pinmap[0][1]) != 0) {
+            digitalWrite(switchesPrefs.pinPump, 0);
+            pinstate &= ~pinmap[0][1];
+            Serial.print(millis());
+            Serial.println(F(": Pump off"));
+            sprintf(logmsg, "pump off, water %d cm", sensors.waterLevel);
+            logMsg(logmsg);
+        }
     }
 }
 
@@ -154,7 +171,7 @@ void setRelais(uint8_t num, bool on) {
 // timeout or if water level reaches lower limit
 void pumpAutoStop() {
     static char logmsg[48];
-    bool autoStop = false;
+    bool pumpoff = false;
 
 #if defined(US_TRIGGER_PIN) && defined(US_ECHO_PIN)
     if (sensors.waterLevel < 0 && (pinstate & pinmap[0][2]) == 0) {
@@ -175,25 +192,29 @@ void pumpAutoStop() {
     if ((pinstate & pinmap[0][1]) != 0) {
 #if defined(US_TRIGGER_PIN) && defined(US_ECHO_PIN)
         readWaterLevel(false);
+        if (sensors.waterLevel < 0)
+            return; // triggers pump blocking above on next call to pumpAutoStop()
         if (sensors.waterLevel <= switchesPrefs.minWaterLevel) {
-            autoStop = true;
+            pumpoff = true;
             Serial.print(millis());
-            Serial.printf(": Pump switched off (low water level, %d cm).\n", sensors.waterLevel);
-            sprintf(logmsg, "pump off, low water, %d cm", sensors.waterLevel);
+            Serial.printf(": WARNING: low water level %d cm\n", sensors.waterLevel);
+            sprintf(logmsg, "low water, %d cm", sensors.waterLevel);
+            for (uint8_t i = 1; i < (sizeof(pinmap) / sizeof(pinmap[0])); i++) {
+                pinstate |= pinmap[i][2]; // block relais
+            }
             logMsg(logmsg);
-            for (uint8_t i = 0; i < (sizeof(pinmap) / sizeof(pinmap[0])); i++)
-                pinstate |= pinmap[i][2]; // block all relais
         } else
 #endif
         if ((getLocalTime() - pintime[0]) > switchesPrefs.pumpAutoStopSecs) {
-            autoStop = true;
+            pumpoff = true;
             Serial.print(millis());
-            Serial.printf(": Pump switched off (autostop, water level %d cm).\n", sensors.waterLevel);
-            sprintf(logmsg, "pump off, autostop, %d cm", sensors.waterLevel);
+            Serial.printf(": Pump autostop, %d secs\n", switchesPrefs.pumpAutoStopSecs);
+            sprintf(logmsg, "pump autostop, %d secs", switchesPrefs.pumpAutoStopSecs);
             logMsg(logmsg);
         }
-        if (autoStop) {
-            for (uint8_t i = 0; i < (sizeof(pinmap)/sizeof(pinmap[0])); i++)
+
+        if (pumpoff) {
+            for (int8_t i = ((sizeof(pinmap) / sizeof(pinmap[0])) - 1); i >= 0; i--)
                 setRelais(i, false);
             mqtt_send(MQTT_TIMEOUT_MS);
         }

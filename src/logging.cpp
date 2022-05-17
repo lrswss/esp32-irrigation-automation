@@ -208,7 +208,7 @@ void sendAllLogs() {
     Serial.printf("Sending all logs in one file (%d bytes)...\n", totalSize);
 
     // send header for upcoming byte stream
-    downloadFile = "irrigationsystem_" + systemID() + ".log";
+    downloadFile = "irrigation_" + systemID() + ".log";
     webserver.sendHeader("Content-Type", "text/plain");
     webserver.sendHeader("Content-Disposition", "attachment; filename="+downloadFile);
     webserver.setContentLength(totalSize);

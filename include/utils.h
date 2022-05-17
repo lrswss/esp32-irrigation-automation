@@ -47,5 +47,6 @@ void restartSystem();
 void resetSystem();
 void array2string(const byte *arr, int len, char *buf, bool reverse);
 void printHEX8bit(uint8_t *arr, uint8_t len, bool ln, bool reverse);
+void free_heap();
 #endif
 

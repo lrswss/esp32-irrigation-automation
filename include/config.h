@@ -108,4 +108,7 @@
 // must be set if structs for preferences were changed
 #define CLEAR_NVS_FWUPDATE
 
+// prints free heap in web ui
+//#define DEBUG_MEMORY
+
 #endif

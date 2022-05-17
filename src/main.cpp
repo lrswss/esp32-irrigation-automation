@@ -77,6 +77,10 @@ void setup() {
         startNTPSync();
 
     webserver_start();
+
+#ifdef DEBUG_MEMORY
+    free_heap();
+#endif
 }
 
 
@@ -85,6 +89,9 @@ void loop() {
     static uint32_t prevMqttPublish = 0;
     static uint32_t wifiRetry = WIFI_STA_RECONNECT_TIMEOUT;
     static uint16_t wifiOffline = 0;
+#ifdef DEBUG_MEMORY
+    static char logmsg[32];
+#endif
 
     // run tasks once every second
     if (millis() - prevLoopTimer >= 1000) { 
@@ -125,8 +132,8 @@ void loop() {
             if (mqtt_connect(MQTT_TIMEOUT_MS))
                 mqtt.loop();
 
-            // every 2 hours: sync RTC, check for log rotation
-            if (!(busyTime % 7200)) {
+            // sync RTC, check for log rotation
+            if (!strcmp("04:30:00", getTimeString(true))) {
                 startNTPSync();
                 rotateLogs();  // blocking...
             }
@@ -144,6 +151,11 @@ void loop() {
 
         unblockRelais();
         pumpAutoStop();
+
+#ifdef DEBUG_MEMORY
+        if (!(busyTime % 300))
+            free_heap();
+#endif
     }
 
     webserver.handleClient(); // handle webserver requests

@@ -155,4 +155,14 @@ void printHEX8bit(uint8_t *arr, uint8_t len, bool ln, bool reverse) {
         Serial.println();
 }
 
+#ifdef DEBUG_MEMORY
+void free_heap() {
+    static char logmsg[32];
+    uint32_t heap = ESP.getFreeHeap();
 
+    Serial.print(millis());
+    Serial.printf(": Free heap %d bytes\n", heap);
+    sprintf(logmsg, "free heap %d", heap);
+    logMsg(logmsg);
+}
+#endif

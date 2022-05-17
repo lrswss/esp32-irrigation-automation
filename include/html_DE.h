@@ -118,6 +118,10 @@ function getReadings() {
         document.getElementById("Hum").innerHTML = json.hum;
         document.getElementById("HumInfo").style.display = "table-row";
       }
+      if ("heap" in json) {
+        document.getElementById("Heap").innerHTML = json.heap;
+        document.getElementById("HeapInfo").style.display = "table-row";
+      }
       if ("level" in json) {
         if (Number(json.level) > 0) {
           document.getElementById("Level").innerHTML = json.level;
@@ -243,6 +247,7 @@ function setValve(pin) {
   <tr id="TempInfo" style="display:none;"><th>Temperatur:</th><td><span id="Temp">--</span> &deg;C</td></tr>
   <tr id="HumInfo" style="display:none;"><th>Luftfeuchtigkeit:</th><td><span id="Hum">--</span> %</td></tr>
   <tr id="LevelInfo" style="display:none;"><th>Wasserstand:</th><td><span id="Level">--</span> cm</td></tr>
+  <tr id="HeapInfo" style="display:none;"><th>Free Heap Memory:</th><td><span id="Heap">-------</span> bytes</td></tr>
 </table>
 </div>
 <div id="valves" style="margin-top:10px;">

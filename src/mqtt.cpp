@@ -103,7 +103,7 @@ bool mqtt_connect(uint16_t timeoutMillis) {
         return true;
     } else {
         Serial.println(F("failed!"));
-        sprintf(logmsg, "mqtt connection to %s failed", generalPrefs.mqttBroker);
+        sprintf(logmsg, "mqtt connect failed");
         logMsg(logmsg);
         return false;
     }
@@ -119,6 +119,7 @@ bool mqtt_send(uint16_t timeoutMillis) {
     if (!wifi_uplink(false)) {
         Serial.print(millis());
         Serial.println(F(": MQTT: cannot send, no WiFi uplink."));
+        logMsg("mqtt publish failed, no wifi");
         return false;
     }
 

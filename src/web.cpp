@@ -45,7 +45,7 @@ WebServer webserver(80);
 // pass sensor readings, system status to web ui as JSON
 static void updateUI() {
     static char buf[128];
-    static StaticJsonDocument<192> JSON;
+    static StaticJsonDocument<256> JSON;
 
     memset(buf, 0, sizeof(buf));
     JSON.clear();
@@ -59,12 +59,15 @@ static void updateUI() {
     JSON["wifi"] = wifi_uplink(false) ? 1 : 0;
 #ifdef HAS_HTU21D
     char temp[8];
-	dtostrf(sensors.temperature, 4, 1, temp);
+    dtostrf(sensors.temperature, 4, 1, temp);
     JSON["temp"] = temp;
     JSON["hum"] = sensors.humidity;
 #endif
 #if defined(US_TRIGGER_PIN) && defined(US_ECHO_PIN)
     JSON["level"] = sensors.waterLevel;
+#endif
+#ifdef DEBUG_MEMORY
+    JSON["heap"] = ESP.getFreeHeap();
 #endif
 
     if (serializeJson(JSON, buf) > 16)
@@ -257,6 +260,8 @@ void webserver_start() {
             strncpy(generalPrefs.mqttTopicCmd, webserver.arg("mqtttopiccmd").c_str(), 64); 
         if (webserver.arg("mqtttopicstate").length() >= 4 && webserver.arg("mqtttopicstate").length() <= 64)
             strncpy(generalPrefs.mqttTopicState, webserver.arg("mqtttopicstate").c_str(), 64); 
+        if (webserver.arg("mqttinterval").toInt() >= 10 && webserver.arg("mqttinterval").toInt() <= 600)
+            generalPrefs.mqttPushInterval = webserver.arg("mqttinterval").toInt();
         if (webserver.arg("mqttuser").length() >= 4 && webserver.arg("mqttuser").length() <= 32)
             strncpy(generalPrefs.mqttUsername, webserver.arg("mqttuser").c_str(), 32); 
         if (webserver.arg("mqttpassword").length() >= 4 && webserver.arg("mqttpassword").length() <= 32)
@@ -271,9 +276,9 @@ void webserver_start() {
             switchesPrefs.pumpAutoStopSecs = webserver.arg("pump_autostop").toInt();
         if (webserver.arg("pump_blocktime").toInt() >= 60 && webserver.arg("pump_blocktime").toInt() <= 7200)
             switchesPrefs.relaisBlockSecs = webserver.arg("pump_blocktime").toInt();
-        if (webserver.arg("min_waterlevel").toInt() >= 10 && webserver.arg("min_waterlevel").toInt() <= 150)
+        if (webserver.arg("min_waterlevel").toInt() >= 5 && webserver.arg("min_waterlevel").toInt() <= 200)
             switchesPrefs.minWaterLevel = webserver.arg("min_waterlevel").toInt();    
-        if (webserver.arg("reservoir_height").toInt() >= 20 && webserver.arg("reservoir_height").toInt() <= 150)
+        if (webserver.arg("reservoir_height").toInt() >= 10 && webserver.arg("reservoir_height").toInt() <= 200)
             switchesPrefs.waterReservoirHeight = webserver.arg("reservoir_height").toInt();
 
         if (webserver.arg("relais1_name").length() >= 3 && webserver.arg("relais1_name").length() <= 24)
