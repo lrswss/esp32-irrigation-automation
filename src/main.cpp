@@ -28,6 +28,7 @@
 #include "sensors.h"
 #include "relais.h"
 #include "web.h"
+#include "scheduler.h"
 
 void setup() {
     char logmsg[96];
@@ -89,6 +90,8 @@ void loop() {
     static uint32_t prevMqttPublish = 0;
     static uint32_t wifiRetry = WIFI_STA_RECONNECT_TIMEOUT;
     static uint16_t wifiOffline = 0;
+    uint32_t scheduler_start = 0;
+
 #ifdef DEBUG_MEMORY
     static char logmsg[32];
 #endif
@@ -149,6 +152,23 @@ void loop() {
             readWaterLevel(true);
         }
 
+        // daily irrigation scheduler (fall back watering)
+        if (switchesPrefs.enableAutoIrrigation && !jobs_scheduled() && 
+                !strcmp(switchesPrefs.autoIrrigationTime, getTimeString(false))) {
+            scheduler_start = millis();
+            for (uint8_t i = 1, j = 0; i < (sizeof(pinmap) / sizeof(pinmap[0])); i++) {
+                Serial.println(i);
+                if ((getLocalTime() - pintime[i]) > (switchesPrefs.autoIrrigationThresholdHours * 3600000)) {
+                    if (switchesPrefs.autoIrrigationSecs[i] > 0) {
+                        schedule_job(&valvejobs[j], (scheduler_start + (i * 1000)), setRelais, i, true);
+                        schedule_job(&valvejobs[j+1], (scheduler_start + (i + switchesPrefs.autoIrrigationSecs[i]) * 1000), setRelais, i, false);
+                        scheduler_start = scheduler_start + ((i + switchesPrefs.autoIrrigationSecs[i]) * 1000) + 5000;
+                        j = j + 2;
+                    }
+                }
+            }
+        }
+
         unblockRelais();
         pumpAutoStop();
 
@@ -159,5 +179,6 @@ void loop() {
     }
 
     webserver.handleClient(); // handle webserver requests
+    scheduler();
     esp_task_wdt_reset(); // feed the dog...
 }

@@ -55,7 +55,7 @@ void logMsg(const char *msg) {
     time_t now;
     struct tm tm;
     
-    if (!generalPrefs.enableLogging || !fsInited)
+    if (!switchesPrefs.enableLogging || !fsInited)
         return;
 
     now = getLocalTime();
@@ -74,7 +74,7 @@ void logMsg(const char *msg) {
 
 
 bool handleSendFile(String path) {
-    if (!generalPrefs.enableLogging || !fsInited)
+    if (!switchesPrefs.enableLogging || !fsInited)
         return false;
 
     if (LITTLEFS.exists(path)) {
@@ -94,7 +94,7 @@ bool handleSendFile(String path) {
 void listDirectory(const char* dir) {
     File rootDir, file;
 
-    if (!generalPrefs.enableLogging || !fsInited)
+    if (!switchesPrefs.enableLogging || !fsInited)
         return;
 
     rootDir = LITTLEFS.open(dir);
@@ -113,7 +113,7 @@ void listDirectory(const char* dir) {
 String listDirHTML(const char* path) {
     String listing;
 
-    if (!generalPrefs.enableLogging || !fsInited)
+    if (!switchesPrefs.enableLogging || !fsInited)
        return listing;
 
     File root = LITTLEFS.open("/");
@@ -136,7 +136,7 @@ void removeLogs() {
     String filename;
     File rootDir, file;
 
-    if (!generalPrefs.enableLogging || !fsInited)
+    if (!switchesPrefs.enableLogging || !fsInited)
         return;
 
     rootDir = LITTLEFS.open("/");
@@ -192,7 +192,7 @@ void sendAllLogs() {
   WiFiClient client = webserver.client();
   uint32_t totalSize = 0;
 
-  if (!generalPrefs.enableLogging || !fsInited)
+  if (!switchesPrefs.enableLogging || !fsInited)
     return;
 
     // determine total size of all files (for content-size header)

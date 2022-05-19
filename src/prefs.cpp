@@ -42,16 +42,6 @@ RTC_DATA_ATTR generalPrefs_t generalPrefs = {
     "none",
     false,
 #endif
-#ifdef ENABLE_LOGGING
-    true,
-#else
-    false,
-#endif
-#ifdef FORMAT_LITTLEFS_IF_FAILED
-    true,
-#else
-    false,
-#endif
 #ifdef CLEAR_NVS_FWUPDATE
     true
 #else
@@ -60,17 +50,29 @@ RTC_DATA_ATTR generalPrefs_t generalPrefs = {
 };
 
 RTC_DATA_ATTR switchesPrefs_t switchesPrefs = {
-    RELAIS1_PIN,
-    RELAIS1_LABEL,
-    RELAIS2_PIN,
-    RELAIS2_LABEL,
-    RELAIS3_PIN,
-    RELAIS3_LABEL,
-    RELAIS4_PIN,
-    RELAIS4_LABEL,
+    { RELAIS1_PIN, RELAIS2_PIN, RELAIS3_PIN, RELAIS4_PIN },
+    { RELAIS1_LABEL, RELAIS2_LABEL, RELAIS3_LABEL, RELAIS4_LABEL},
+    { MOIST1_PIN, MOIST2_PIN, MOIST3_PIN, MOIST4_PIN },
+    { MOIST1_LABEL, MOIST2_LABEL, MOIST3_LABEL, MOIST4_LABEL},
     PUMP_PIN,
     PUMP_AUTOSTOP_SECS,
     RELAIS_BLOCK_SECS,
+#ifdef ENABLE_AUTO_IRRIGRATION
+    true,
+    AUTO_IRRIGRATION_TIME,
+    { AUTO_IRRIGATION_SECS, AUTO_IRRIGATION_SECS, AUTO_IRRIGATION_SECS, AUTO_IRRIGATION_SECS },
+    AUTO_IRRIGATION_THRESHOLD_HOURS,
+#else
+    false,
+    "none",
+    0,
+    0,
+#endif
+#ifdef ENABLE_LOGGING
+    true,
+#else
+    false,
+#endif
     PUMP_MIN_WATERLEVEL_CM,
     WATER_RESERVOIR_HEIGHT
 };

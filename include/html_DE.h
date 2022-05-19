@@ -391,10 +391,10 @@ const char LOGS_FOOTER_html[] PROGMEM = R"=====(
 const char CONFIG_html[] PROGMEM = R"=====(
 <script>
 function hideMessages() {
-  document.getElementById("configSaved").style.display = "none";
-  document.getElementById("appassError").style.display = "none";
-  document.getElementById("pinError").style.display = "none";
   document.getElementById("message").style.display = "none";
+  document.getElementById("configSaved").style.display = "none";
+  document.getElementById("timeError").style.display = "none";
+  document.getElementById("irrTimeError").style.display = "none";
 }
 
 function clearSettings() {
@@ -422,21 +422,142 @@ function checkInput() {
   var height = 0;
   var xhttp = new XMLHttpRequest();
 
+  if (document.getElementById("checkbox_auto_irrigation").checked == true) {
+    if (!document.getElementById("input_irrigation_time").value.match(/^\d{2}:\d{2}$/)) {
+      document.getElementById("timeError").style.display = "block";
+      err++;
+    }
+    for (var i = 1; i <= 4; i++) {
+      if (document.getElementById("input_irrigation_relais"+i).value > 
+            document.getElementById("input_pump_autostop").value) {
+        document.getElementById("irrTimeError").style.display = "block";
+        err++;
+        break;
+      }
+    }
+  }
+
+  if (err > 0) {
+    height = (err * 12) + 4;
+    document.getElementById("message").style.height = height + "px";
+    document.getElementById("message").style.display = "block";
+    document.getElementById("heading").scrollIntoView();
+    setTimeout(hideMessages, 4000);
+    xhttp.open("GET", "tickle", true); // reset webserver timeout
+    xhttp.send();
+    return false;
+  } else {
+    document.getElementById("message").style.display = "none";
+    return true;
+  }
+}
+
+function digitsOnly(input) {
+  var regex = /[^0-9]/g;
+  input.value = input.value.replace(regex, "");
+}
+
+function timeOnly(input) {
+  var regex = /[^0-9:]/g;
+  input.value = input.value.replace(regex, "");
+}
+
+function toggleAutoIrrigation() {
+  if (document.getElementById("checkbox_auto_irrigation").checked == true) {
+    document.getElementById("auto_irrigation").style.display = "block";
+  } else {
+    document.getElementById("auto_irrigation").style.display = "none";
+  }
+}
+
+</script>
+</head>
+<body onload="configSaved(); toggleAutoIrrigation();">
+<div style="text-align:left;display:inline-block;min-width:340px;">
+<div style="text-align:center;">
+<h2 id="heading">Einstellungen</h2>
+<div id="message" style="display:none;margin-top:10px;color:red;font-weight:bold;text-align:center;max-width:335px">
+<span id="configSaved" style="display:none;color:green">Einstellungen gespeichert</span>
+<span id="timeError" style="display:none">Uhrzeitformat prüfen (HH:MM)</span>
+<span id="irrTimeError" style="display:none">Dauer Bewässerungszeiten prüfen</span>
+</div>
+</div>
+
+<div style="max-width:335px;margin-top:10px;">
+<form method="POST" action="/config" onsubmit="return checkInput();">
+  <fieldset><legend><b>&nbsp;Automatische Bewässerung&nbsp;</b></legend>
+  <p><input id="checkbox_auto_irrigation" name="auto_irrigation" type="checkbox" __AUTO_IRRIGATION__ onclick="toggleAutoIrrigation();"><b>Aktivieren</b></p>
+  <span style="display:none" id="auto_irrigation">
+  <p><b>Uhrzeit (HH:MM)</b><br />
+  <input id="input_irrigation_time" name="irrigation_time" type="text" value="__IRRIGATION_TIME__" maxlength="5" onkeyup="timeOnly(this);"></p>
+  <p><b>__RELAIS1_LABEL__ (Sek.)</b><br />
+  <input id="input_irrigation_relais1" name="irrigation_relais1_secs" type="text" value="__IRRIGATION_RELAIS1_SECS__" maxlength="3" onkeyup="digitsOnly(this);"></p>
+  <p><b>__RELAIS2_LABEL__ (Sek.)</b><br />
+  <input id="input_irrigation_relais2" name="irrigation_relais2_secs" type="text" value="__IRRIGATION_RELAIS2_SECS__" maxlength="3" onkeyup="digitsOnly(this);"></p>
+  <p><b>__RELAIS3_LABEL__ (Sek.)</b><br />
+  <input id="input_irrigation_relais3" name="irrigation_relais3_secs" type="text" value="__IRRIGATION_RELAIS3_SECS__" maxlength="3" onkeyup="digitsOnly(this);"></p>
+  <p><b>__RELAIS4_LABEL__ (Sek.)</b><br />
+  <input id="input_irrigation_relais4" name="irrigation_relais4_secs" type="text" value="__IRRIGATION_RELAIS4_SECS__" maxlength="3" onkeyup="digitsOnly(this);"></p>
+  </span>
+  </fieldset>
+  <br />
+  
+  <fieldset><legend><b>&nbsp;Wasserpumpe&nbsp;</b></legend>
+  <p><b>Autoabschaltung (Sek.)</b><br />
+  <input id="input_pump_autostop" name="pump_autostop" type="text" value="__PUMP_AUTOSTOP__" maxlength="3" onkeyup="digitsOnly(this);"></p>
+  <p><b>Bewässerungssperre (Sek.)</b><br />
+  <input id="input_pump_blocktime" name="pump_blocktime" type="text" value="__PUMP_BLOCKTIME__" maxlength="4" onkeyup="digitsOnly(this);"></p>
+  <p><b>Höhe des Wasserbehälters (cm)</b><br />
+  <input id="input_reservoir_height" name="reservoir_height" type="text" value="__RESERVOIR_HEIGHT__" maxlength="3" onkeyup="digitsOnly(this);"></p>
+  <p><b>Minimaler Wasserstand (cm)</b><br />
+  <input id="input_pump_waterlevel" name="min_water_level" type="text" value="__MIN_WATER_LEVEL__" maxlength="3" onkeyup="digitsOnly(this);"></p>
+  </fieldset>
+  <br />
+
+  <fieldset><legend><b>&nbsp;Sonstiges&nbsp;</b></legend>
+  <p><input id="checkbox_logging" name="logging" type="checkbox" __LOGGING__ onclick="toggleLogging();"><b>Protokollierung aktivieren</b></p>
+  </fieldset>
+  <br />
+
+  <p><button class="button bred" type="submit">Einstellungen speichern</button></p>
+</form>
+<!-- <p><button class="button bred" onclick="clearSettings(); return false;">Einstellungen zur&uuml;cksetzen</button></p> -->
+<p><button onclick="location.href='/pins';">Anschlussbelegung</button></p>
+<p><button onclick="location.href='/network';">Netzwerkeinstellungen</button></p>
+<p><button onclick="location.href='/';">Startseite</button></p>
+</div>
+)=====";
+
+
+const char NETWORK_html[] PROGMEM = R"=====(
+<script>
+function hideMessages() {
+  document.getElementById("message").style.display = "none";
+  document.getElementById("configSaved").style.display = "none";
+  document.getElementById("appassError").style.display = "none";
+}
+
+function configSaved() {
+    const url = new URLSearchParams(window.location.search);
+    if (url.has("saved")) {
+        document.getElementById("configSaved").style.display = "block";
+        document.getElementById("message").style.display = "block";
+        document.getElementById("heading").scrollIntoView();
+        setTimeout(hideMessages, 4000);
+    }
+}
+
+function checkInput() {
+  var err = 0;
+  var height = 0;
+  var xhttp = new XMLHttpRequest();
+
   if (document.getElementById("input_appassword").value.length > 0 && 
       document.getElementById("input_appassword").value.length < 8) {
     document.getElementById("appassError").style.display = "block";
     err++;
   }
-  for (var i = 1; i <= 3 && err == 0; i++) {
-    for (var j = i+1; j <= 4 && err == 0; j++) {
-      select1 = document.getElementById("relais"+i+"_pin_selector");
-      select2 = document.getElementById("relais"+j+"_pin_selector");
-      if (select1.options[select1.selectedIndex].value == select2.options[select2.selectedIndex].value) {  
-        document.getElementById("pinError").style.display = "block";
-        err++;
-      }
-    }
-  }
+
   if (err > 0) {
     height = (err * 12) + 4;
     document.getElementById("message").style.height = height + "px";
@@ -465,8 +586,112 @@ function toggleMQTTAuth() {
   }
 }
 
-function pinSelector(id, parent, value) {
-    var pins = [ __RELAIS_PINS__ ];
+</script>
+</head>
+<body onload="initPage(); configSaved(); toggleMQTTAuth();">
+<div style="text-align:left;display:inline-block;min-width:340px;">
+<div style="text-align:center;">
+<h2 id="heading">Netzwerkeinstellungen</h2>
+<div id="message" style="display:none;margin-top:10px;color:red;font-weight:bold;text-align:center;max-width:335px">
+<span id="configSaved" style="display:none;color:green">Einstellungen gespeichert</span>
+<span id="appassError" style="display:none">Passwort f&uuml;r Access-Point zu kurz</span>
+</div>
+</div>
+
+<div style="max-width:335px;margin-top:10px;">
+<form method="POST" action="/network" onsubmit="return checkInput();">
+  <fieldset><legend><b>&nbsp;WLAN&nbsp;</b></legend>
+  <p><b>Netzwerkkennung (SSID)</b><br />
+  <input id="input_stassid" name="stassid" size="16" maxlength="32" value="__STA_SSID__"></p>
+  <p><b>Passwort (optional)</b><br />
+  <input id="input_stapassword" type="password" name="stapassword" size="16" maxlength="32" value="__STA_PASSWORD__"></p>
+  <p><b>Passwort f&uuml;r lokalen Access-Point</b><br />
+  <input id="input_appassword" type="password" name="appassword" size="16" maxlength="32" value="__AP_PASSWORD__"></p>
+  </fieldset>
+  <br />
+  
+  <fieldset><legend><b>&nbsp;MQTT&nbsp;</b></legend>
+  <p><b>Adresse des Brokers</b><br />
+  <input name="mqttbroker" size="16" maxlength="64" value="__MQTT_BROKER__"></p>
+  <p><b>Topic f&uuml;r Steuerung</b><br />
+  <input name="mqtttopiccmd" size="16" maxlength="64" value="__MQTT_TOPIC_CMD__"></p>
+  <p><b>Topic f&uuml;r Nachrichten</b><br />
+  <input name="mqtttopicstate" size="16" maxlength="64" value="__MQTT_TOPIC_STATE__"></p>
+  <p><b>Nachrichteninterval (Sek.)</b><br />
+  <input name="mqttinterval" value="__MQTT_INTERVAL__" maxlength="4 onkeyup="digitsOnly(this)"></p>
+  <p><input id="checkbox_mqttauth" name="mqttauth" onclick="toggleMQTTAuth();" type="checkbox" __MQTT_AUTH__><b>Authentifizierung aktivieren</b></p>
+     <span style="display:none" id="mqttauth">
+     <p><b>Benutzername</b><br />
+     <input id="input_mqttuser" name="mqttuser" size="16" maxlength="32" value="__MQTT_USERNAME__"></p>
+     <p><b>Passwort</b><br />
+     <input id="input_mqttpassword" type="password" name="mqttpassword" size="16" maxlength="32" value="__MQTT_PASSWORD__"></p>
+     </span>
+  </fieldset>
+  <br />
+
+  <p><button class="button bred" type="submit">Einstellungen speichern</button></p>
+</form>
+<p><button onclick="location.href='/config';">Einstellungen</button></p>
+<p><button onclick="location.href='/';">Startseite</button></p>
+</div>
+)=====";
+
+
+const char PINS_html[] PROGMEM = R"=====(
+<script>
+function hideMessages() {
+  document.getElementById("message").style.display = "none";
+  document.etElementById("configSaved").style.display = "none";
+  document.getElementById("pinError").style.display = "none";
+}
+
+function configSaved() {
+    const url = new URLSearchParams(window.location.search);
+    if (url.has("saved")) {
+        document.getElementById("configSaved").style.display = "block";
+        document.getElementById("message").style.display = "block";
+        document.getElementById("heading").scrollIntoView();
+        setTimeout(hideMessages, 4000);
+    }
+}
+
+function checkInput() {
+  var err = 0;
+  var height = 0;
+  var xhttp = new XMLHttpRequest();
+
+  for (var i = 1; i <= 3 && err == 0; i++) {
+    for (var j = i+1; j <= 4 && err == 0; j++) {
+      select1 = document.getElementById("relais"+i+"_pin_selector");
+      select2 = document.getElementById("relais"+j+"_pin_selector");
+      if (select1.options[select1.selectedIndex].value == select2.options[select2.selectedIndex].value) {  
+        document.getElementById("pinError").style.display = "block";
+        err++;
+      }
+    }
+  }
+
+  if (err > 0) {
+    height = (err * 12) + 4;
+    document.getElementById("message").style.height = height + "px";
+    document.getElementById("message").style.display = "block";
+    document.getElementById("heading").scrollIntoView();
+    setTimeout(hideMessages, 4000);
+    xhttp.open("GET", "tickle", true); // reset webserver timeout
+    xhttp.send();
+    return false;
+  } else {
+    document.getElementById("message").style.display = "none";
+    return true;
+  }
+}
+
+function digitsOnly(input) {
+  var regex = /[^0-9]/g;
+  input.value = input.value.replace(regex, "");
+}
+
+function pinSelector(pins, id, parent, value) {
     var selectList;
 
     selectList = document.createElement("select");
@@ -487,68 +712,31 @@ function pinSelector(id, parent, value) {
 }
 
 function initPage() {
-    pinSelector("relais1_pin", document.getElementById("relais1"), __RELAIS1_PIN__);
-    pinSelector("relais2_pin", document.getElementById("relais2"), __RELAIS2_PIN__);
-    pinSelector("relais3_pin", document.getElementById("relais3"), __RELAIS3_PIN__);
-    pinSelector("relais4_pin", document.getElementById("relais4"), __RELAIS4_PIN__);
+    pinSelector([ __RELAIS_PINS__ ], "relais1_pin", document.getElementById("relais1"), __RELAIS1_PIN__);
+    pinSelector([ __RELAIS_PINS__ ], "relais2_pin", document.getElementById("relais2"), __RELAIS2_PIN__);
+    pinSelector([ __RELAIS_PINS__ ], "relais3_pin", document.getElementById("relais3"), __RELAIS3_PIN__);
+    pinSelector([ __RELAIS_PINS__ ], "relais4_pin", document.getElementById("relais4"), __RELAIS4_PIN__);
+    pinSelector([ __MOISTURE_PINS__ ], "moist1_pin", document.getElementById("moist1"), __MOIST1_PIN__);
+    pinSelector([ __MOISTURE_PINS__ ], "moist2_pin", document.getElementById("moist2"), __MOIST2_PIN__);
+    pinSelector([ __MOISTURE_PINS__ ], "moist3_pin", document.getElementById("moist3"), __MOIST3_PIN__);
+    pinSelector([ __MOISTURE_PINS__ ], "moist4_pin", document.getElementById("moist4"), __MOIST4_PIN__);
 }
 
 </script>
 </head>
-<body onload="initPage(); configSaved(); toggleMQTTAuth();">
+<body onload="initPage(); configSaved(); toggleAutoIrrigation();">
 <div style="text-align:left;display:inline-block;min-width:340px;">
 <div style="text-align:center;">
-<h2 id="heading">Einstellungen</h2>
-<div id="message" style="display:none;margin-top:10px;color:red;height:16px;font-weight:bold;text-align:center;max-width:335px">
-<span id="configSaved" style="display:none;color:green">Einstellungen gespeichert!</span>
-<span id="appassError" style="display:none">Passwort f&uuml;r Access-Point zu kurz!</span>
-<span id="pinError" style="display:none">Pin für Relais doppelt vergeben!</span>
+<h2 id="heading">Anschlussbelegung</h2>
+<div id="message" style="display:none;margin-top:10px;color:red;font-weight:bold;text-align:center;max-width:335px">
+<span id="configSaved" style="display:none;color:green">Einstellungen gespeichert</span>
+<span id="pinError" style="display:none">Pin für Relais doppelt vergeben</span>
 </div>
 </div>
+
 <div style="max-width:335px;margin-top:10px;">
-<form method="POST" action="/config" onsubmit="return checkInput();">
-  <fieldset><legend><b>&nbsp;WLAN&nbsp;</b></legend>
-  <p><b>Netzwerkkennung (SSID)</b><br />
-  <input id="input_stassid" name="stassid" size="16" maxlength="32" value="__STA_SSID__"></p>
-  <p><b>Passwort (optional)</b><br />
-  <input id="input_stapassword" type="password" name="stapassword" size="16" maxlength="32" value="__STA_PASSWORD__"></p>
-  <p><b>Passwort f&uuml;r lokalen Access-Point</b><br />
-  <input id="input_appassword" type="password" name="appassword" size="16" maxlength="32" value="__AP_PASSWORD__"></p>
-  </fieldset>
-  <br />
-  
-  <fieldset><legend><b>&nbsp;MQTT&nbsp;</b></legend>
-  <p><b>Adresse des Brokers</b><br />
-  <input name="mqttbroker" size="16" maxlength="64" value="__MQTT_BROKER__"></p>
-  <p><b>Topic f&uuml;r Steuerung</b><br />
-  <input name="mqtttopiccmd" size="16" maxlength="64" value="__MQTT_TOPIC_CMD__"></p>
-  <p><b>Topic f&uuml;r Nachrichten</b><br />
-  <input name="mqtttopicstate" size="16" maxlength="64" value="__MQTT_TOPIC_STATE__"></p>
-  <p><b>Nachrichteninterval (Sek.)</b><br />
-  <input name="mqttinterval" value="__MQTT_INTERVAL__" maxlength="4 "onkeyup="digitsOnly(this)"></p>
-  <p><input id="checkbox_mqttauth" name="mqttauth" onclick="toggleMQTTAuth();" type="checkbox" __MQTT_AUTH__><b>Authentifizierung aktivieren</b></p>
-     <span style="display:none" id="mqttauth">
-     <p><b>Benutzername</b><br />
-     <input id="input_mqttuser" name="mqttuser" size="16" maxlength="32" value="__MQTT_USERNAME__"></p>
-     <p><b>Passwort</b><br />
-     <input id="input_mqttpassword" type="password" name="mqttpassword" size="16" maxlength="32" value="__MQTT_PASSWORD__"></p>
-     </span>
-  </fieldset>
-  <br />
-
-  <fieldset><legend><b>&nbsp;Wasserpumpe&nbsp;</b></legend>
-  <p><b>Autoabschaltung (Sek.)</b><br />
-  <input id="input_pump_autostop" name="pump_autostop" type="text" value="__PUMP_AUTOSTOP__" maxlength="3" onclick="digitsOnly();"></p>
-  <p><b>Bewässerungssperre (Sek.)</b><br />
-  <input id="input_pump_blocktime" name="pump_blocktime" type="text" value="__PUMP_BLOCKTIME__" maxlength="3" onclick="digitsOnly();"></p>
-  <p><b>Höhe des Wasserbehälters (cm)</b><br />
-  <input id="input_reservoir_height" name="reservoir_height" type="text" value="__RESERVOIR_HEIGHT__" maxlength="3" onclick="digitsOnly();"></p>
-  <p><b>Minimaler Wasserstand (cm)</b><br />
-  <input id="input_pump_waterlevel" name="min_water_level" type="text" value="__MIN_WATER_LEVEL__" maxlength="3" onclick="digitsOnly();"></p>
-  </fieldset>
-  <br />
-
-  <fieldset><legend><b>&nbsp;Ventilnamen und Anschlusspins&nbsp;</b></legend>
+<form method="POST" action="/pins" onsubmit="return checkInput();">
+  <fieldset><legend><b>&nbsp;Ventilnamen und Pins&nbsp;</b></legend>
   <p id="relais1"><input id="input_relais1" class="pin_label" type="text" name="relais1_name" size="16" maxlength="24" value="__RELAIS1_LABEL__"></p>
   <p id="relais2"><input id="input_relais2" class="pin_label" type="text" name="relais2_name" size="16" maxlength="24" value="__RELAIS2_LABEL__"></p>
   <p id="relais3"><input id="input_relais3" class="pin_label" type="text" name="relais3_name" size="16" maxlength="24" value="__RELAIS3_LABEL__"></p>
@@ -556,26 +744,28 @@ function initPage() {
   </fieldset>
   <br />
 
-  <!-- <fieldset><legend><b>&nbsp;Feuchtesensoren und Anschlusspins&nbsp;</b></legend>
-  <p><input id="input_moist1" class="pin_label" type="text" name="relais1_name" size="16" maxlength="16" value="__MOIST1__">
+  <fieldset><legend><b>&nbsp;Feuchtesensoren und Pins&nbsp;</b></legend>
+  <p id="moist1"><input id="input_moist1" class="pin_label" type="text" name="moist1_name" size="16" maxlength="24" value="__MOIST1_LABEL__"></p>
+  <p id="moist2"><input id="input_moist2" class="pin_label" type="text" name="moist2_name" size="16" maxlength="24" value="__MOIST2_LABEL__"></p>
+  <p id="moist3"><input id="input_moist3" class="pin_label" type="text" name="moist3_name" size="16" maxlength="24" value="__MOIST3_LABEL__"></p>
+  <p id="moist4"><input id="input_moist4" class="pin_label" type="text" name="moist4_name" size="16" maxlength="24" value="__MOIST4_LABEL__"></p>
+  </fieldset>
+  <br />
+
+  <!-- <p><input id="input_moist1" class="pin_label" type="text" name="moist1_name" size="16" maxlength="16" value="__MOIST1__">
   <select id="select_moist1" class="pin_value" name="moist1_pin"><option value="0">-</option><option value="2">3</option></select></p>
-  <p><input id="input_moist2" class="pin_label" type="text" name="relais2_name" size="16" maxlength="16" value="__MOIST2__">
+  <p><input id="input_moist2" class="pin_label" type="text" name="moist2_name" size="16" maxlength="16" value="__MOIST2__">
   <select id="select_moist2" class="pin_value" name="moist2_pin"><option value="0">-</option><option value="2">3</option></select></p>
-  <p><input id="input_moist3" class="pin_label" type="text" name="relais3_name" size="16" maxlength="16" value="__MOIST3__">
+  <p><input id="input_moist3" class="pin_label" type="text" name="moist3_name" size="16" maxlength="16" value="__MOIST3__">
   <select id="select_moist3" class="pin_value" name="moist3_pin"><option value="0">-</option><option value="2">3</option></select></p>
-  <p><input id="input_moist4" class="pin_label" type="text" name="relais2_name" size="16" maxlength="16" value="__MOIST4__">
+  <p><input id="input_moist4" class="pin_label" type="text" name="moist4_name" size="16" maxlength="16" value="__MOIST4__">
   <select id="select_moist4" class="pin_value" name="moist4_pin"><option value="0">-</option><option value="2">3</option></select></p>
   </fieldset>
   <br /> -->
   
-  <fieldset><legend><b>&nbsp;Sonstiges&nbsp;</b></legend>
-  <p><input id="checkbox_logging" name="logging" type="checkbox" __LOGGING__ onclick="toggleLogging();"><b>Protokollierung aktivieren</b></p>
-  </fieldset>
-  <br />
-
-  <p style="margin-top:25px"><button class="button bred" onclick="clearSettings(); return false;">Einstellungen zur&uuml;cksetzen</button></p>
-  <p><button type="submit">Einstellungen speichern</button></p>
+  <p><button class="button bred" type="submit">Einstellungen speichern</button></p>
 </form>
+<p><button onclick="location.href='/config';">Einstellungen</button></p>
 <p><button onclick="location.href='/';">Startseite</button></p>
 </div>
 )=====";

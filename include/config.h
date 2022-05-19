@@ -85,7 +85,16 @@
 #define RELAIS4_LABEL "valve4"
 
 // pins for moisture sensor (ADC1) // XXX TODO
-#define MOISTURE_PIN "32,33,34,36,39"
+#define MOISTURE_PINS "32,33,34,36,39"
+#define MOIST1_PIN 32
+#define MOIST1_LABEL "moistsensor1"
+#define MOIST2_PIN 33
+#define MOIST2_LABEL "moistsensor2"
+#define MOIST3_PIN 34
+#define MOIST3_LABEL "moistsensor3"
+#define MOIST4_PIN 39
+#define MOIST4_LABEL "moistsensor4"
+
 
 // wait a least given number of secs before triggering relais again
 // meant to prevent accidental overwatering
@@ -100,6 +109,14 @@
 
 // log sensor reading to flash
 #define ENABLE_LOGGING
+
+// if plants haven't been watered for AUTO_IRRIGATION_DURATION_SECS trigger 
+// irrigation (all valves) for AUTO_IRRIGATION_SECS at AUTO_IRRIGRATION_TIME
+// Note: AUTO_IRRIGATION_DURATION_SECS must be less than PUMP_AUTOSTOP_SECS
+#define ENABLE_AUTO_IRRIGRATION
+#define AUTO_IRRIGRATION_TIME "18:00"   // HH:MM, 24h
+#define AUTO_IRRIGATION_SECS 20
+#define AUTO_IRRIGATION_THRESHOLD_HOURS 18
 
 // time server
 #define NTP_ADDRESS "de.pool.ntp.org"

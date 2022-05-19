@@ -1,4 +1,3 @@
-
 /***************************************************************************
   Copyright (c) 2021-2022 Lars Wessels
 
@@ -19,21 +18,31 @@
 
 ***************************************************************************/
 
-#ifndef _RELAIS_H
-#define _REALIS_H
+
+
+#ifndef _SCHEDULER_H
+#define _SCHEDULER_H
 
 #include <Arduino.h>
-#include <ArduinoJson.h>
+#include <sys/time.h>
 
-extern uint16_t pinmap[5][3];
-extern char pinnames[5][7];
-extern uint32_t pintime[];
+#define MAX_JOBS 16
 
-void initRelais();
-void setRelais(uint8_t num, bool on);
-void unblockRelais();
-uint16_t relaisStatus(char* buf, size_t s);
-void pumpAutoStop();
+typedef struct valvejob_t valvejob_t;
+typedef void (*jobfn_t)(uint8_t, bool);  // setRelais()
 
+extern valvejob_t valvejobs[MAX_JOBS];
+
+struct valvejob_t {
+    struct valvejob_t* next;
+    time_t time;
+    jobfn_t func;
+    uint8_t relais;
+    bool state;
+};
+
+void schedule_job (valvejob_t* job, time_t time, jobfn_t func, uint8_t relais, bool state);
+bool jobs_scheduled();
+void scheduler();
 
 #endif

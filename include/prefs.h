@@ -24,6 +24,9 @@
 #include <Arduino.h>
 #include <Preferences.h>  // use NVS instead of EEPROM (depreciated on ESP32)
 
+#define NUM_RELAIS 4
+#define NUM_MOISTURE_SENSORS 4
+
 typedef struct  {
     uint16_t wifiAPT;
     char wifiApPassword[33];
@@ -36,23 +39,22 @@ typedef struct  {
     char mqttUsername[33];
     char mqttPassword[33];
     bool mqttEnableAuth;
-    bool enableLogging;
-    bool formatfs;
     bool clearNVSFwUpdate; // no switch in web ui
 } generalPrefs_t;
 
 typedef struct {
-    uint8_t pinRelais1;
-    char labelRelais1[25];
-    uint8_t pinRelais2;
-    char labelRelais2[25];
-    uint8_t pinRelais3;
-    char labelRelais3[25];
-    uint8_t pinRelais4;
-    char labelRelais4[25];
+    uint8_t pinRelais[NUM_RELAIS];
+    char labelRelais[NUM_RELAIS][25];
+    uint8_t pinMoisture[NUM_RELAIS];
+    char labelMoisture[NUM_RELAIS][25];
     uint8_t pinPump;
     uint16_t pumpAutoStopSecs;
     uint32_t relaisBlockSecs;
+    bool enableAutoIrrigation;
+    char autoIrrigationTime[8];
+    uint16_t autoIrrigationSecs[4];
+    uint8_t autoIrrigationThresholdHours;
+    bool enableLogging;
     uint8_t minWaterLevel;
     uint8_t waterReservoirHeight;
 } switchesPrefs_t;

@@ -55,14 +55,10 @@ char pinnames[5][7] = {
 void initRelais() {
     pinMode(switchesPrefs.pinPump, OUTPUT);
     digitalWrite(switchesPrefs.pinPump, 0); // active high
-    pinMode(switchesPrefs.pinRelais1, OUTPUT);
-    digitalWrite(switchesPrefs.pinRelais1, 1);
-    pinMode(switchesPrefs.pinRelais2, OUTPUT);
-    digitalWrite(switchesPrefs.pinRelais2, 1);
-    pinMode(switchesPrefs.pinRelais3, OUTPUT);
-    digitalWrite(switchesPrefs.pinRelais3, 1);
-    pinMode(switchesPrefs.pinRelais4, OUTPUT);
-    digitalWrite(switchesPrefs.pinRelais4, 1);
+    for (uint8_t i = 0; i <= 4; i++) {
+        pinMode(switchesPrefs.pinRelais[i-1], OUTPUT);
+        digitalWrite(switchesPrefs.pinRelais[i-1], 1);
+    }
 }
 
 
@@ -93,19 +89,17 @@ void unblockRelais() {
 // blocking relais for certain time after last 
 // being turned on and switching pump on/off 
 void setRelais(uint8_t num, bool on) {
-    uint32_t blockTimeSecs;
     bool valveOpen = false;
     char logmsg[32];
 
     if (num != 0) { // valves only
         if (on) {
-            blockTimeSecs = getLocalTime() - pintime[num];
-            if (blockTimeSecs > (switchesPrefs.relaisBlockSecs)) {
+            if ((pinstate & pinmap[num][2]) == 0) {
                 if ((pinstate & pinmap[num][1]) == 0) {
                     digitalWrite(pinmap[num][0], 0); // active low
                     pinstate |= pinmap[num][1];
                     pinstate &= ~pinmap[num][2];
-                    Serial.println(millis());
+                    Serial.print(millis());
                     Serial.printf(": Opened %s", pinnames[num]);
                     sprintf(logmsg, "%s on", pinnames[num]);
                     logMsg(logmsg);
@@ -117,9 +111,8 @@ void setRelais(uint8_t num, bool on) {
                     }
                 }
             } else {
-                Serial.println(millis());
-                Serial.printf(": Relais %s blocked for %d secs!\n", pinnames[num],
-                    ((switchesPrefs.relaisBlockSecs) - blockTimeSecs));
+                Serial.print(millis());
+                Serial.printf(": Relais %s blocked!\n", pinnames[num]);
                 return;
             }
         } else {

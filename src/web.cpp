@@ -49,7 +49,7 @@ static void updateUI() {
 
     memset(buf, 0, sizeof(buf));
     JSON.clear();
-    JSON["logging"] = generalPrefs.enableLogging ? 1 : 0;
+    JSON["logging"] = switchesPrefs.enableLogging ? 1 : 0;
     if (getLocalTime() > 1609455600) {  // RTC already set?
         JSON["date"] = getDateString();
         JSON["time"] = getTimeString(false);
@@ -82,13 +82,16 @@ void webserver_start() {
     // send main page
     webserver.on("/", HTTP_GET, []() {
         String html = FPSTR(HEADER_html);
+        char buf[32];
+
         html += FPSTR(ROOT_html);
         html.replace("__SYSTEMID__", systemID());
         html.replace("__WATER_RESERVOIR_HEIGHT__", String(WATER_RESERVOIR_HEIGHT));
-        html.replace("__RELAIS1_LABEL__", String(switchesPrefs.labelRelais1));
-        html.replace("__RELAIS2_LABEL__", String(switchesPrefs.labelRelais2));
-        html.replace("__RELAIS3_LABEL__", String(switchesPrefs.labelRelais3));
-        html.replace("__RELAIS4_LABEL__", String(switchesPrefs.labelRelais4));
+        for (uint8_t i = 1; i <= NUM_RELAIS; i++) {
+            sprintf(buf, "__RELAIS%d_LABEL__", i);
+            html.replace(buf, String(switchesPrefs.labelRelais[i-1]));
+
+        }
         html += FPSTR(FOOTER_html);
         html.replace("__FIRMWARE__", String(FIRMWARE_VERSION));
         html.replace("__BUILD__", String(__DATE__)+" "+String(__TIME__));
@@ -116,7 +119,7 @@ void webserver_start() {
     });
 
     // show page with log files
-    if (generalPrefs.enableLogging) {
+    if (switchesPrefs.enableLogging) {
         webserver.on("/logs", HTTP_GET, []() {
             logMsg("show logs");
             uint32_t freeBytes = LITTLEFS.totalBytes() * 0.95 - LITTLEFS.usedBytes();
@@ -189,11 +192,11 @@ void webserver_start() {
         esp_task_wdt_reset();
     });
 
-    // show LoRaWAN settings
-    webserver.on("/config", HTTP_GET, []() {
+    // show network settings
+    webserver.on("/network", HTTP_GET, []() {
         String html;
         html += HEADER_html;
-        html += CONFIG_html;
+        html += NETWORK_html;
 
         html.replace("__STA_SSID__", String(generalPrefs.wifiStaSSID));
         html.replace("__STA_PASSWORD__", String(generalPrefs.wifiStaPassword));
@@ -212,22 +215,146 @@ void webserver_start() {
         else
             html.replace("__MQTT_AUTH__", "");
 
+        html += FPSTR(FOOTER_html);
+        html.replace("__FIRMWARE__", String(FIRMWARE_VERSION));
+        html.replace("__BUILD__", String(__DATE__) + " " + String(__TIME__));
+
+        webserver.send(200, "text/html", html);
+        Serial.print(millis());
+        Serial.println(F(": Show network settings"));
+    });
+
+    // save network settings to NVS
+    webserver.on("/network", HTTP_POST, []() {
+        logMsg("webui save network prefs");
+
+        if (webserver.arg("appassword").length() >= 8 && webserver.arg("appassword").length() <= 32)
+            strncpy(generalPrefs.wifiApPassword, webserver.arg("appassword").c_str(), 32); 
+        if (webserver.arg("stassid").length() >= 8 && webserver.arg("stassid").length() <= 32)
+            strncpy(generalPrefs.wifiStaSSID, webserver.arg("stassid").c_str(), 32); 
+        if (webserver.arg("stapassword").length() >= 8 && webserver.arg("stapassword").length() <= 32)
+            strncpy(generalPrefs.wifiStaPassword, webserver.arg("stapassword").c_str(), 32); 
+
+        if (webserver.arg("mqttbroker").length() >= 4 && webserver.arg("mqttbroker").length() <= 64)
+            strncpy(generalPrefs.mqttBroker, webserver.arg("mqttbroker").c_str(), 64); 
+        if (webserver.arg("mqtttopiccmd").length() >= 4 && webserver.arg("mqtttopiccmd").length() <= 64)
+            strncpy(generalPrefs.mqttTopicCmd, webserver.arg("mqtttopiccmd").c_str(), 64); 
+        if (webserver.arg("mqtttopicstate").length() >= 4 && webserver.arg("mqtttopicstate").length() <= 64)
+            strncpy(generalPrefs.mqttTopicState, webserver.arg("mqtttopicstate").c_str(), 64); 
+        if (webserver.arg("mqttinterval").toInt() >= 10 && webserver.arg("mqttinterval").toInt() <= 600)
+            generalPrefs.mqttPushInterval = webserver.arg("mqttinterval").toInt(); 
+        if (webserver.arg("mqttuser").length() >= 4 && webserver.arg("mqttuser").length() <= 32)
+            strncpy(generalPrefs.mqttUsername, webserver.arg("mqttuser").c_str(), 32); 
+        if (webserver.arg("mqttpassword").length() >= 4 && webserver.arg("mqttpassword").length() <= 32)
+            strncpy(generalPrefs.mqttPassword, webserver.arg("mqttpassword").c_str(), 32); 
+
+        if (webserver.arg("mqttauth") == "on")
+            generalPrefs.mqttEnableAuth = true;
+        else
+            generalPrefs.mqttEnableAuth = false;
+
+        nvs.putBool("general", true);
+        nvs.putBytes("generalPrefs", &generalPrefs, sizeof(generalPrefs));  
+
+        webserver.sendHeader("Location", "/network?saved=1", true);
+        webserver.send(302, "text/plain", "");
+        Serial.print(millis());
+        Serial.println(F(": Network settings saved"));
+    });
+
+    // show pin settings
+    webserver.on("/pins", HTTP_GET, []() {
+        String html;
+        char buf[32];
+        html += HEADER_html;
+        html += PINS_html;
+
+        html.replace("__RELAIS_PINS__", RELAIS_PINS);
+        for (uint8_t i = 1; i <= NUM_RELAIS; i++) {
+            sprintf(buf, "__RELAIS%d_LABEL__", i);
+            html.replace(buf, String(switchesPrefs.labelRelais[i-1]));
+            sprintf(buf, "__RELAIS%d_PIN__", i);
+            html.replace(buf, String(switchesPrefs.pinRelais[i-1]));
+        }
+
+        html.replace("__MOISTURE_PINS__", MOISTURE_PINS);
+        for (uint8_t i = 1; i <= NUM_MOISTURE_SENSORS; i++) {
+            sprintf(buf, "__MOIST%d_LABEL__", i);
+            html.replace(buf, String(switchesPrefs.labelMoisture[i-1]));
+            sprintf(buf, "__MOIST%d_PIN__", i);
+            html.replace(buf, String(switchesPrefs.pinMoisture[i-1]));
+        }
+
+        html += FPSTR(FOOTER_html);
+        html.replace("__FIRMWARE__", String(FIRMWARE_VERSION));
+        html.replace("__BUILD__", String(__DATE__) + " " + String(__TIME__));
+
+        webserver.send(200, "text/html", html);
+        Serial.print(millis());
+        Serial.println(F(": Show pin settings"));
+    });
+
+    // save pin settings to NVS
+    webserver.on("/pins", HTTP_POST, []() {
+        char buf[32];
+
+        logMsg("webui save pin prefs");
+        for (uint8_t i = 1; i <= NUM_RELAIS; i++) {
+            sprintf(buf, "relais%d_name", i);
+            if (webserver.arg(buf).length() >= 3 && webserver.arg(buf).length() <= 24) {
+                strncpy(switchesPrefs.labelRelais[i-1], webserver.arg(buf).c_str(), 24);
+            }
+            sprintf(buf, "relais%d_pin", i);
+            if (webserver.arg(buf).toInt() >= 1 && webserver.arg(buf).toInt() <= 39) {
+                switchesPrefs.pinRelais[i-1] = webserver.arg(buf).toInt();
+            }
+        }
+
+       for (uint8_t i = 1; i <= NUM_MOISTURE_SENSORS; i++) {
+            sprintf(buf, "moist%d_name", i);
+            if (webserver.arg(buf).length() >= 3 && webserver.arg(buf).length() <= 24)
+                strncpy(switchesPrefs.labelMoisture[i-1], webserver.arg(buf).c_str(), 24);
+            sprintf(buf, "moist%d_pin", i);
+            if (webserver.arg(buf).toInt() >= 1 && webserver.arg(buf).toInt() <= 39)
+                switchesPrefs.pinMoisture[i-1] = webserver.arg(buf).toInt();
+        }
+        
+        // store settings in NVS     
+        nvs.putBool("switches", true);
+        nvs.putBytes("switchesPrefs", &switchesPrefs, sizeof(switchesPrefs));       
+
+        webserver.sendHeader("Location", "/pins?saved=1", true);
+        webserver.send(302, "text/plain", "");
+        Serial.print(millis());
+        Serial.println(F(": Pin settings saved"));
+    });
+
+    // show irrgation settings
+    webserver.on("/config", HTTP_GET, []() {
+        String html;
+        char buf[32];
+        html += HEADER_html;
+        html += CONFIG_html;
+
+        if (switchesPrefs.enableAutoIrrigation) 
+            html.replace("__AUTO_IRRIGATION__", "checked");
+        else
+            html.replace("__AUTO_IRRIGATION__", "");
+        html.replace("__IRRIGATION_TIME__", String(switchesPrefs.autoIrrigationTime));
+
+        for (uint8_t i = 1; i <= NUM_RELAIS; i++) {
+            sprintf(buf, "__RELAIS%d_LABEL__", i);
+            html.replace(buf, String(switchesPrefs.labelRelais[i-1]));
+            sprintf(buf, "__IRRIGATION_RELAIS%d_SECS__", i);
+            html.replace(buf, String(switchesPrefs.autoIrrigationSecs[i-1]));
+        }
+
         html.replace("__PUMP_AUTOSTOP__", String(switchesPrefs.pumpAutoStopSecs));
         html.replace("__PUMP_BLOCKTIME__", String(switchesPrefs.relaisBlockSecs));
         html.replace("__RESERVOIR_HEIGHT__", String(switchesPrefs.waterReservoirHeight));
         html.replace("__MIN_WATER_LEVEL__", String(switchesPrefs.minWaterLevel));
 
-        html.replace("__RELAIS_PINS__", RELAIS_PINS);
-        html.replace("__RELAIS1_LABEL__", String(switchesPrefs.labelRelais1));
-        html.replace("__RELAIS1_PIN__", String(switchesPrefs.pinRelais1));
-        html.replace("__RELAIS2_LABEL__", String(switchesPrefs.labelRelais2));
-        html.replace("__RELAIS2_PIN__", String(switchesPrefs.pinRelais2));
-        html.replace("__RELAIS3_LABEL__", String(switchesPrefs.labelRelais3));
-        html.replace("__RELAIS3_PIN__", String(switchesPrefs.pinRelais3));
-        html.replace("__RELAIS4_LABEL__", String(switchesPrefs.labelRelais4));
-        html.replace("__RELAIS4_PIN__", String(switchesPrefs.pinRelais4));
-
-        if (generalPrefs.enableLogging)
+        if (switchesPrefs.enableLogging)
             html.replace("__LOGGING__", "checked");
         else
             html.replace("__LOGGING__", "");
@@ -238,84 +365,52 @@ void webserver_start() {
 
         webserver.send(200, "text/html", html);
         Serial.print(millis());
-        Serial.println(F(": Show system settings"));
+        Serial.println(F(": Show main settings"));
     });
 
-    // changes to LoRaWAN configuration must be saved to lorawanKeys prefs
-    // and working copies in RTC memory used in lmic_init() after soft restart
+    // save main settings to NVS
     webserver.on("/config", HTTP_POST, []() {
+        char buf[32];
 
-        logMsg("webui save prefs");
-        if (webserver.arg("appassword").length() >= 8 && webserver.arg("appassword").length() <= 32)
-            strncpy(generalPrefs.wifiApPassword, webserver.arg("appassword").c_str(), 32); 
-        if (webserver.arg("stassid").length() >= 8 && webserver.arg("stassid").length() <= 32)
-            strncpy(generalPrefs.wifiStaSSID, webserver.arg("stassid").c_str(), 32); 
-        if (webserver.arg("stapassword").length() >= 8 && webserver.arg("stapassword").length() <= 32)
-            strncpy(generalPrefs.wifiStaPassword, webserver.arg("stapassword").c_str(), 32); 
-
-        if (webserver.arg("mqttbroker").length() >= 4 && webserver.arg("mqttbroker").length() <= 64)
-            strncpy(generalPrefs.mqttBroker, webserver.arg("mqttbroker").c_str(), 64); 
-
-        if (webserver.arg("mqtttopiccmd").length() >= 4 && webserver.arg("mqtttopiccmd").length() <= 64)
-            strncpy(generalPrefs.mqttTopicCmd, webserver.arg("mqtttopiccmd").c_str(), 64); 
-        if (webserver.arg("mqtttopicstate").length() >= 4 && webserver.arg("mqtttopicstate").length() <= 64)
-            strncpy(generalPrefs.mqttTopicState, webserver.arg("mqtttopicstate").c_str(), 64); 
-        if (webserver.arg("mqttinterval").toInt() >= 10 && webserver.arg("mqttinterval").toInt() <= 600)
-            generalPrefs.mqttPushInterval = webserver.arg("mqttinterval").toInt();
-        if (webserver.arg("mqttuser").length() >= 4 && webserver.arg("mqttuser").length() <= 32)
-            strncpy(generalPrefs.mqttUsername, webserver.arg("mqttuser").c_str(), 32); 
-        if (webserver.arg("mqttpassword").length() >= 4 && webserver.arg("mqttpassword").length() <= 32)
-            strncpy(generalPrefs.mqttPassword, webserver.arg("mqttpassword").c_str(), 32); 
-
-        if (webserver.arg("mqttauth") == "on")
-            generalPrefs.mqttEnableAuth = true;
+        logMsg("webui save main prefs");
+        if (webserver.arg("auto_irrigation") == "on")
+            switchesPrefs.enableAutoIrrigation = true;
         else
-            generalPrefs.mqttEnableAuth = false;   
+            switchesPrefs.enableAutoIrrigation = false;
 
-        if (webserver.arg("pump_autostop").toInt() >= 5 && webserver.arg("pump_autostop").toInt() <= 180)
+        if (webserver.arg("irrigation_time").length() == 5)
+            strncpy(switchesPrefs.autoIrrigationTime, webserver.arg("irrigation_time").c_str(), 5); 
+        for (uint8_t i = 1; i <= NUM_RELAIS; i++) {
+            sprintf(buf, "irrigation_relais%d_secs", i);
+            if (webserver.arg(buf).toInt() >= 10 && webserver.arg(buf).toInt() <= switchesPrefs.pumpAutoStopSecs)
+                switchesPrefs.autoIrrigationSecs[i-1] = webserver.arg(buf).toInt();
+        }
+
+        if (webserver.arg("pump_autostop").toInt() >= 10 && webserver.arg("pump_autostop").toInt() <= 300)
             switchesPrefs.pumpAutoStopSecs = webserver.arg("pump_autostop").toInt();
         if (webserver.arg("pump_blocktime").toInt() >= 60 && webserver.arg("pump_blocktime").toInt() <= 7200)
             switchesPrefs.relaisBlockSecs = webserver.arg("pump_blocktime").toInt();
-        if (webserver.arg("min_waterlevel").toInt() >= 5 && webserver.arg("min_waterlevel").toInt() <= 200)
-            switchesPrefs.minWaterLevel = webserver.arg("min_waterlevel").toInt();    
+        if (webserver.arg("min_water_level").toInt() >= 4 && webserver.arg("min_water_level").toInt() <= 200)
+            switchesPrefs.minWaterLevel = webserver.arg("min_water_level").toInt();    
         if (webserver.arg("reservoir_height").toInt() >= 10 && webserver.arg("reservoir_height").toInt() <= 200)
             switchesPrefs.waterReservoirHeight = webserver.arg("reservoir_height").toInt();
 
-        if (webserver.arg("relais1_name").length() >= 3 && webserver.arg("relais1_name").length() <= 24)
-            strncpy(switchesPrefs.labelRelais1, webserver.arg("relais1_name").c_str(), 24); 
-        if (webserver.arg("relais1_pin").toInt() >= 1 && webserver.arg("relais1_pin").toInt() <= 39)
-            switchesPrefs.pinRelais1 = webserver.arg("relais1_pin").toInt();
-        if (webserver.arg("relais2_name").length() >= 3 && webserver.arg("relais2_name").length() <= 24)
-            strncpy(switchesPrefs.labelRelais2, webserver.arg("relais2_name").c_str(), 24); 
-        if (webserver.arg("relais2_pin").toInt() >= 1 && webserver.arg("relais2_pin").toInt() <= 39)
-            switchesPrefs.pinRelais2 = webserver.arg("relais2_pin").toInt();
-        if (webserver.arg("relais3_name").length() >= 3 && webserver.arg("relais3_name").length() <= 24)
-            strncpy(switchesPrefs.labelRelais3, webserver.arg("relais3_name").c_str(), 24); 
-        if (webserver.arg("relais3_pin").toInt() >= 1 && webserver.arg("relais3_pin").toInt() <= 39)
-            switchesPrefs.pinRelais3 = webserver.arg("relais3_pin").toInt();
-        if (webserver.arg("relais4_name").length() >= 3 && webserver.arg("relais4_name").length() <= 24)
-            strncpy(switchesPrefs.labelRelais4, webserver.arg("relais4_name").c_str(), 24); 
-        if (webserver.arg("relais4_pin").toInt() >= 1 && webserver.arg("relais4_pin").toInt() <= 39)
-            switchesPrefs.pinRelais4 = webserver.arg("relais4_pin").toInt();   
-
         if (webserver.arg("logging") == "on")
-            generalPrefs.enableLogging = true;
+            switchesPrefs.enableLogging = true;
         else
-            generalPrefs.enableLogging = false;
-        
-        // store settings in NVS
-        nvs.putBool("general", true);
-        nvs.putBytes("generalPrefs", &generalPrefs, sizeof(generalPrefs));       
+            switchesPrefs.enableLogging = false;
+
+        // store settings in NVS     
         nvs.putBool("switches", true);
         nvs.putBytes("switchesPrefs", &switchesPrefs, sizeof(switchesPrefs));       
 
         webserver.sendHeader("Location", "/config?saved=1", true);
         webserver.send(302, "text/plain", "");
         Serial.print(millis());
-        Serial.println(F(": System settings saved"));
+        Serial.println(F(": Main settings saved"));
     });
 
-    if (generalPrefs.enableLogging) {
+    if (switchesPrefs.enableLogging) {
         webserver.on("/sendlogs", HTTP_GET, []() {
         logMsg("send all logs");
         sendAllLogs();
@@ -354,7 +449,7 @@ void webserver_start() {
             webserver.send(200, "text/html", html);
 
         // send log file(s)
-        } else if (!handleSendFile(webserver.uri()) && generalPrefs.enableLogging) { 
+        } else if (!handleSendFile(webserver.uri()) && switchesPrefs.enableLogging) { 
             webserver.send(404, "text/plain", "Error 404: file not found");
         }
     });
