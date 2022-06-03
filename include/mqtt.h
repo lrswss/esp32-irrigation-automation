@@ -27,6 +27,7 @@
 #include "config.h"
 
 #define MQTT_TIMEOUT_MS 5000
+#define MQTT_CONNECT_RETRY_SECS 30
 #define MQTT_CLIENT_NAME "esp32-irrigation"
 #define MQTT_PORT 1883
 

@@ -24,7 +24,7 @@ valvejob_t* scheduledjobs = NULL;
 valvejob_t valvejobs[MAX_JOBS];
 
 // schedule a valve job
-void schedule_job(valvejob_t* job, time_t time, jobfn_t func, uint8_t relais, bool state) {
+void schedule_job(valvejob_t* job, time_t time, jobfn_t func, uint8_t relay, bool state) {
     valvejob_t** pnext;
 
     if (time <= 0)
@@ -34,14 +34,13 @@ void schedule_job(valvejob_t* job, time_t time, jobfn_t func, uint8_t relais, bo
     job->next = NULL;
     job->time = time;
     job->func = func;
-    job->relais = relais;
+    job->relay = relay;
     job->state = state;
 
     // ...and insert it into schedule
     for (pnext = &scheduledjobs; *pnext; pnext = &((*pnext)->next)) {
         if (((*pnext)->time - time) > 0) {
             job->next = *pnext;
-            Serial.println("+");
             break;
         }
     }
@@ -52,7 +51,7 @@ void schedule_job(valvejob_t* job, time_t time, jobfn_t func, uint8_t relais, bo
 // execute scheduled jobs
 void scheduler() {
     if (jobs_scheduled() && (scheduledjobs->time < millis())) {
-        scheduledjobs->func(scheduledjobs->relais, scheduledjobs->state);
+        scheduledjobs->func(scheduledjobs->relay, scheduledjobs->state);
         scheduledjobs = scheduledjobs->next;
     }
 }

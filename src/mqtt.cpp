@@ -25,7 +25,7 @@
 #include "prefs.h"
 #include "wlan.h"
 #include "sensors.h"
-#include "relais.h"
+#include "relay.h"
 #include "utils.h"
 
 
@@ -38,7 +38,7 @@ static void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     if (strstr(topic, generalPrefs.mqttTopicCmd) != NULL) {
         for (uint8_t i = 1; i < (sizeof(pinmap)/sizeof(pinmap[0])); i++) {
             if (strstr(topic, pinnames[i])) {
-                setRelais(i, strncmp((char*) payload, "on", length) == 0);
+                setRelay(i, strncmp((char*) payload, "on", length) == 0);
                 mqtt_send(MQTT_TIMEOUT_MS);
             }
         }
@@ -64,6 +64,7 @@ static void mqtt_init() {
 // connect to mqtt broker and subscribe to valve cmd topics
 bool mqtt_connect(uint16_t timeoutMillis) {
     static char buf[96], logmsg[96];
+    static uint32_t lastFail = 0;
     uint8_t retries = 0;
 
     mqtt_init();
@@ -75,6 +76,10 @@ bool mqtt_connect(uint16_t timeoutMillis) {
         Serial.println(F(": MQTT: cannot connect, no WiFi uplink."));
         return false;
     }
+
+    // wait 30 sec before trying to connect after previous fail
+    if ((millis() - lastFail) < (MQTT_CONNECT_RETRY_SECS * 1000))
+        return false;
 
     Serial.print(millis());
     Serial.printf(": MQTT: connecting to broker %s", generalPrefs.mqttBroker);
@@ -102,6 +107,7 @@ bool mqtt_connect(uint16_t timeoutMillis) {
         }
         return true;
     } else {
+        lastFail = millis();
         Serial.println(F("failed!"));
         sprintf(logmsg, "mqtt connect failed");
         logMsg(logmsg);
@@ -113,8 +119,8 @@ bool mqtt_connect(uint16_t timeoutMillis) {
 // try to publish sensor reedings with given timeout 
 // will implicitly call mqtt_init()
 bool mqtt_send(uint16_t timeoutMillis) {
-    StaticJsonDocument<256> JSON;
-    static char status[64], topic[64], buf[128];
+    StaticJsonDocument<384> JSON;
+    static char status[64], topic[64], buf[192], label[16];
 
     if (!wifi_uplink(false)) {
         Serial.print(millis());
@@ -123,16 +129,27 @@ bool mqtt_send(uint16_t timeoutMillis) {
         return false;
     }
 
-    // create JSON with relais status and sensor readings
-    relaisStatus(status, sizeof(status));
+    // create JSON with relay status and sensor readings
+    relayStatus(status, sizeof(status));
     deserializeJson(JSON, status);
-    readTemp(false);
-    readWaterLevel(false);
+#ifdef HAS_HTU21D
+    readTemp(false, false);
     JSON["temp"] = sensors.temperature;
     JSON["hum"] = sensors.humidity;
+#endif
+#if defined(US_TRIGGER_PIN) && defined(US_ECHO_PIN)
+    readWaterLevel(false, false);
     JSON["level"] = sensors.waterLevel;
-    size_t s = serializeJson(JSON, buf);
+#endif
+    for (uint8_t i = 0; i < NUM_MOISTURE_SENSORS; i++) {
+        // don't send raw sensor values
+        if (switchesPrefs.pinMoisture[i] > 0 && sensors.moisture[i] <= 100) {
+            sprintf(label, "moist%d", i+1);
+            JSON[label] = sensors.moisture[i];
+        }
+    }
 
+    size_t s = serializeJson(JSON, buf);
     if (mqtt_connect(timeoutMillis)) {
         snprintf(topic, sizeof(topic)-1, "%s", generalPrefs.mqttTopicState);
         Serial.print(millis());

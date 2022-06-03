@@ -23,7 +23,7 @@
 
 // choose language for web interface
 #define LANG_DE
-//#define LANG_EN // XXX TODO
+//#define LANG_EN
 
 //
 // All settings except DEBUG options can
@@ -41,8 +41,8 @@
 #define WIFI_AP_FALLBACK_TIMEOUT 120
 
 // credentials for internet connection (wifi uplink)
-#define WIFI_STA_SSID "***REMOVED***"
-#define WIFI_STA_PASSWORD "***REMOVED***"
+#define WIFI_STA_SSID "__your_ssid__"
+#define WIFI_STA_PASSWORD "__secret__"
 #define WIFI_STA_CONNECT_TIMEOUT 5
 #define WIFI_STA_RECONNECT_TIMEOUT 60
 
@@ -61,7 +61,7 @@
 // pump will stop if active for more then given
 // number of settings; meant as a upper limit
 // to avoid accidental overwatering
-#define PUMP_AUTOSTOP_SECS 30
+#define PUMP_AUTOSTOP_SECS 90
 
 // if water level in reservoir falls below this
 // level, the pump is switched of and blocked to
@@ -72,33 +72,38 @@
 // use to calculate the water level
 #define WATER_RESERVOIR_HEIGHT 37
 
-// relais name and pin assigment
+// relay names and pin assigment
 // set *_PIN to -1 to disable
-#define RELAIS_PINS "13,16,17,18,19,23,25,26,27"
-#define RELAIS1_PIN 19
-#define RELAIS1_LABEL "valve1"
-#define RELAIS2_PIN 18
-#define RELAIS2_LABEL "valve2"
-#define RELAIS3_PIN 17
-#define RELAIS3_LABEL "valve3"
-#define RELAIS4_PIN 16
-#define RELAIS4_LABEL "valve4"
+#define RELAY_PINS "13,16,17,18,19,23,25,26,27"
+#define RELAY1_PIN 19
+#define RELAY1_LABEL "valve1"
+#define RELAY2_PIN 18
+#define RELAY2_LABEL "valve2"
+#define RELAY3_PIN 17
+#define RELAY3_LABEL "valve3"
+#define RELAY4_PIN 16
+#define RELAY4_LABEL "valve4"
 
-// pins for moisture sensor (ADC1) // XXX TODO
+// pins for moisture sensor on ADC1 (optional)
+// set *_PIN to -1 to disable
 #define MOISTURE_PINS "32,33,34,36,39"
-#define MOIST1_PIN 32
-#define MOIST1_LABEL "moistsensor1"
-#define MOIST2_PIN 33
-#define MOIST2_LABEL "moistsensor2"
-#define MOIST3_PIN 34
-#define MOIST3_LABEL "moistsensor3"
-#define MOIST4_PIN 39
-#define MOIST4_LABEL "moistsensor4"
+#define MOIST1_PIN 33
+#define MOIST1_LABEL "moisture1"
+#define MOIST2_PIN 34
+#define MOIST2_LABEL "moisture2"
+#define MOIST3_PIN 32
+#define MOIST3_LABEL "moisture3"
+#define MOIST4_PIN -1
+#define MOIST4_LABEL "moisture4"
 
+// ADC readings from capacitave moisture sensor v1.2 which mark the
+// upper bound (sensor in air) and lower bound (sensor placed in water)
+#define MOISTURE_VALUE_AIR 840
+#define MOISTURE_VALUE_WATER 445
 
-// wait a least given number of secs before triggering relais again
-// meant to prevent accidental overwatering
-#define RELAIS_BLOCK_SECS 900
+// wait a least given number of secs before triggering 
+// relay again; meant to prevent accidental overwatering
+#define RELAY_BLOCK_MINS 180
 
 // I2C temperature and humidity sensor (optional)
 #define HAS_HTU21D
@@ -110,13 +115,13 @@
 // log sensor reading to flash
 #define ENABLE_LOGGING
 
-// if plants haven't been watered for AUTO_IRRIGATION_DURATION_SECS trigger 
+// if plants haven't been watered for AUTO_IRRIGATION_PAUSE_HOURS trigger 
 // irrigation (all valves) for AUTO_IRRIGATION_SECS at AUTO_IRRIGRATION_TIME
 // Note: AUTO_IRRIGATION_DURATION_SECS must be less than PUMP_AUTOSTOP_SECS
 #define ENABLE_AUTO_IRRIGRATION
-#define AUTO_IRRIGRATION_TIME "18:00"   // HH:MM, 24h
+#define AUTO_IRRIGRATION_TIME "06:30"   // HH:MM, 24h
 #define AUTO_IRRIGATION_SECS 20
-#define AUTO_IRRIGATION_THRESHOLD_HOURS 18
+#define AUTO_IRRIGATION_PAUSE_HOURS 18
 
 // time server
 #define NTP_ADDRESS "de.pool.ntp.org"

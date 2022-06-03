@@ -23,7 +23,7 @@
 
 #include <Arduino.h>
 #include <FS.h>
-#include <LITTLEFS.h>
+#include <LittleFS.h>
 
 #define LOGFILE_MAX_SIZE 1024*50  // 50k
 #define LOGFILE_MAX_FILES 24

@@ -25,7 +25,7 @@
 #include "utils.h"
 #include "rtc.h"
 #include "wlan.h"
-#include "relais.h"
+#include "relay.h"
 #include "mqtt.h"
 #include "sensors.h"
 #include "prefs.h"
@@ -44,8 +44,8 @@ WebServer webserver(80);
 
 // pass sensor readings, system status to web ui as JSON
 static void updateUI() {
-    static char buf[128];
-    static StaticJsonDocument<256> JSON;
+    static char buf[192], label[16];
+    static StaticJsonDocument<384> JSON;
 
     memset(buf, 0, sizeof(buf));
     JSON.clear();
@@ -58,14 +58,25 @@ static void updateUI() {
     JSON["runtime"] = getRuntime(busyTime);
     JSON["wifi"] = wifi_uplink(false) ? 1 : 0;
 #ifdef HAS_HTU21D
-    char temp[8];
-    dtostrf(sensors.temperature, 4, 1, temp);
-    JSON["temp"] = temp;
-    JSON["hum"] = sensors.humidity;
+	char temp[8];
+    if (sensors.humidity > 0) {
+        dtostrf(sensors.temperature, 4, 1, temp);
+        JSON["temp"] = temp;
+        JSON["hum"] = sensors.humidity;
+    }
 #endif
 #if defined(US_TRIGGER_PIN) && defined(US_ECHO_PIN)
-    JSON["level"] = sensors.waterLevel;
+    if (!switchesPrefs.ignoreWaterLevel)
+        JSON["level"] = sensors.waterLevel;
+    else
+        JSON["level"] = -2;
 #endif
+    for (uint8_t i = 0; i < NUM_MOISTURE_SENSORS; i++) {
+        if (switchesPrefs.pinMoisture[i] > 0) {
+            sprintf(label, "moist%d", i+1);
+            JSON[label] = sensors.moisture[i];
+        }
+    }
 #ifdef DEBUG_MEMORY
     JSON["heap"] = ESP.getFreeHeap();
 #endif
@@ -87,11 +98,17 @@ void webserver_start() {
         html += FPSTR(ROOT_html);
         html.replace("__SYSTEMID__", systemID());
         html.replace("__WATER_RESERVOIR_HEIGHT__", String(WATER_RESERVOIR_HEIGHT));
-        for (uint8_t i = 1; i <= NUM_RELAIS; i++) {
-            sprintf(buf, "__RELAIS%d_LABEL__", i);
-            html.replace(buf, String(switchesPrefs.labelRelais[i-1]));
+        html.replace("__MIN_WATER_LEVEL__", String(switchesPrefs.minWaterLevel));
+        for (uint8_t i = 1; i <= NUM_RELAY; i++) {
+            sprintf(buf, "__RELAY%d_LABEL__", i);
+            html.replace(buf, String(switchesPrefs.labelRelay[i-1]));
 
         }
+        for (uint8_t i = 1; i <= NUM_MOISTURE_SENSORS; i++) {
+            sprintf(buf, "__MOIST%d_LABEL__", i);
+            html.replace(buf, String(switchesPrefs.labelMoisture[i-1]));
+        }
+
         html += FPSTR(FOOTER_html);
         html.replace("__FIRMWARE__", String(FIRMWARE_VERSION));
         html.replace("__BUILD__", String(__DATE__)+" "+String(__TIME__));
@@ -105,24 +122,24 @@ void webserver_start() {
     webserver.on("/valve", HTTP_GET, []() {
         char reply[64];
         if (webserver.arg("on").toInt() >= 1 && webserver.arg("on").toInt() <= 4) {
-            setRelais(webserver.arg("on").toInt(), true);
+            setRelay(webserver.arg("on").toInt(), true);
         } else if (webserver.arg("off").toInt() >= 1 && webserver.arg("off").toInt() <= 4) {
-            setRelais(webserver.arg("off").toInt(), false);
+            setRelay(webserver.arg("off").toInt(), false);
         }
-        if (relaisStatus(reply, sizeof(reply)) > 0) {
+        if (relayStatus(reply, sizeof(reply)) > 0) {
             webserver.send(200, F("application/json"), reply);
         } else {
             webserver.send(500, "text/plain", "ERR");
         }
         if (webserver.arg("on").toInt() > 0 || webserver.arg("off").toInt() > 0)
-            mqtt_send(MQTT_TIMEOUT_MS); // publish changed relais settings
+            mqtt_send(MQTT_TIMEOUT_MS); // publish changed relay settings
     });
 
     // show page with log files
     if (switchesPrefs.enableLogging) {
         webserver.on("/logs", HTTP_GET, []() {
             logMsg("show logs");
-            uint32_t freeBytes = LITTLEFS.totalBytes() * 0.95 - LITTLEFS.usedBytes();
+            uint32_t freeBytes = LittleFS.totalBytes() * 0.95 - LittleFS.usedBytes();
             String html = FPSTR(HEADER_html);
             html += FPSTR(LOGS_HEADER_html);
             html.replace("__BYTES_FREE__", String(freeBytes / 1024));
@@ -269,12 +286,12 @@ void webserver_start() {
         html += HEADER_html;
         html += PINS_html;
 
-        html.replace("__RELAIS_PINS__", RELAIS_PINS);
-        for (uint8_t i = 1; i <= NUM_RELAIS; i++) {
-            sprintf(buf, "__RELAIS%d_LABEL__", i);
-            html.replace(buf, String(switchesPrefs.labelRelais[i-1]));
-            sprintf(buf, "__RELAIS%d_PIN__", i);
-            html.replace(buf, String(switchesPrefs.pinRelais[i-1]));
+        html.replace("__RELAY_PINS__", RELAY_PINS);
+        for (uint8_t i = 1; i <= NUM_RELAY; i++) {
+            sprintf(buf, "__RELAY%d_LABEL__", i);
+            html.replace(buf, String(switchesPrefs.labelRelay[i-1]));
+            sprintf(buf, "__RELAY%d_PIN__", i);
+            html.replace(buf, String(switchesPrefs.pinRelay[i-1]));
         }
 
         html.replace("__MOISTURE_PINS__", MOISTURE_PINS);
@@ -284,6 +301,17 @@ void webserver_start() {
             sprintf(buf, "__MOIST%d_PIN__", i);
             html.replace(buf, String(switchesPrefs.pinMoisture[i-1]));
         }
+
+        html.replace("__MOISTURE_MIN__", String(switchesPrefs.moistureMin));
+        html.replace("__MOISTURE_MAX__", String(switchesPrefs.moistureMax));
+        if (switchesPrefs.moistureRaw)
+            html.replace("__MOISTURE_RAW__", "checked");
+        else
+            html.replace("__MOISTURE_RAW__", "");
+        if (switchesPrefs.moistureMovingAvg)
+            html.replace("__MOISTURE_AVG__", "checked");
+        else
+            html.replace("__MOISTURE_AVG__", "");
 
         html += FPSTR(FOOTER_html);
         html.replace("__FIRMWARE__", String(FIRMWARE_VERSION));
@@ -299,14 +327,14 @@ void webserver_start() {
         char buf[32];
 
         logMsg("webui save pin prefs");
-        for (uint8_t i = 1; i <= NUM_RELAIS; i++) {
-            sprintf(buf, "relais%d_name", i);
+        for (uint8_t i = 1; i <= NUM_RELAY; i++) {
+            sprintf(buf, "relay%d_name", i);
             if (webserver.arg(buf).length() >= 3 && webserver.arg(buf).length() <= 24) {
-                strncpy(switchesPrefs.labelRelais[i-1], webserver.arg(buf).c_str(), 24);
+                strncpy(switchesPrefs.labelRelay[i-1], webserver.arg(buf).c_str(), 24);
             }
-            sprintf(buf, "relais%d_pin", i);
-            if (webserver.arg(buf).toInt() >= 1 && webserver.arg(buf).toInt() <= 39) {
-                switchesPrefs.pinRelais[i-1] = webserver.arg(buf).toInt();
+            sprintf(buf, "relay%d_pin", i);
+            if (webserver.arg(buf).toInt() >= -1 && webserver.arg(buf).toInt() <= 39) {
+                switchesPrefs.pinRelay[i-1] = webserver.arg(buf).toInt();
             }
         }
 
@@ -315,13 +343,30 @@ void webserver_start() {
             if (webserver.arg(buf).length() >= 3 && webserver.arg(buf).length() <= 24)
                 strncpy(switchesPrefs.labelMoisture[i-1], webserver.arg(buf).c_str(), 24);
             sprintf(buf, "moist%d_pin", i);
-            if (webserver.arg(buf).toInt() >= 1 && webserver.arg(buf).toInt() <= 39)
+            if (webserver.arg(buf).toInt() >= -1 && webserver.arg(buf).toInt() <= 39)
                 switchesPrefs.pinMoisture[i-1] = webserver.arg(buf).toInt();
         }
-        
+
+        if (webserver.arg("moisture_min").toInt() >= 100 && webserver.arg("moisture_min").toInt() <= 1000)
+            switchesPrefs.moistureMin = webserver.arg("moisture_min").toInt();
+        if (webserver.arg("moisture_max").toInt() >= 100 && webserver.arg("moisture_max").toInt() <= 1000)
+            switchesPrefs.moistureMax = webserver.arg("moisture_max").toInt();
+        if (webserver.arg("moisture_raw") == "on")
+            switchesPrefs.moistureRaw = true;
+        else
+            switchesPrefs.moistureRaw = false;
+        if (webserver.arg("moisture_avg") == "on")
+            switchesPrefs.moistureMovingAvg = true;
+        else
+            switchesPrefs.moistureMovingAvg = false;           
+
         // store settings in NVS     
         nvs.putBool("switches", true);
-        nvs.putBytes("switchesPrefs", &switchesPrefs, sizeof(switchesPrefs));       
+        nvs.putBytes("switchesPrefs", &switchesPrefs, sizeof(switchesPrefs));
+
+        // reset moving average values
+        if (switchesPrefs.moistureMovingAvg)
+            readMoisture(true, false, true);     
 
         webserver.sendHeader("Location", "/pins?saved=1", true);
         webserver.send(302, "text/plain", "");
@@ -341,18 +386,24 @@ void webserver_start() {
         else
             html.replace("__AUTO_IRRIGATION__", "");
         html.replace("__IRRIGATION_TIME__", String(switchesPrefs.autoIrrigationTime));
+        html.replace("__IRRIGATION_PAUSE__", String(switchesPrefs.autoIrrigationPauseHours));
 
-        for (uint8_t i = 1; i <= NUM_RELAIS; i++) {
-            sprintf(buf, "__RELAIS%d_LABEL__", i);
-            html.replace(buf, String(switchesPrefs.labelRelais[i-1]));
-            sprintf(buf, "__IRRIGATION_RELAIS%d_SECS__", i);
+        for (uint8_t i = 1; i <= NUM_RELAY; i++) {
+            sprintf(buf, "__RELAY%d_LABEL__", i);
+            html.replace(buf, String(switchesPrefs.labelRelay[i-1]));
+            sprintf(buf, "__IRRIGATION_RELAY%d_SECS__", i);
             html.replace(buf, String(switchesPrefs.autoIrrigationSecs[i-1]));
         }
 
         html.replace("__PUMP_AUTOSTOP__", String(switchesPrefs.pumpAutoStopSecs));
-        html.replace("__PUMP_BLOCKTIME__", String(switchesPrefs.relaisBlockSecs));
+        html.replace("__PUMP_BLOCKTIME__", String(switchesPrefs.relaysBlockMins));
         html.replace("__RESERVOIR_HEIGHT__", String(switchesPrefs.waterReservoirHeight));
         html.replace("__MIN_WATER_LEVEL__", String(switchesPrefs.minWaterLevel));
+
+        if (switchesPrefs.ignoreWaterLevel)
+            html.replace("__IGNORE_WATER_LEVEL__", "checked");
+        else
+            html.replace("__IGNORE_WATER_LEVEL__", "");
 
         if (switchesPrefs.enableLogging)
             html.replace("__LOGGING__", "checked");
@@ -380,20 +431,27 @@ void webserver_start() {
 
         if (webserver.arg("irrigation_time").length() == 5)
             strncpy(switchesPrefs.autoIrrigationTime, webserver.arg("irrigation_time").c_str(), 5); 
-        for (uint8_t i = 1; i <= NUM_RELAIS; i++) {
-            sprintf(buf, "irrigation_relais%d_secs", i);
+        if (webserver.arg("irrigation_pause").toInt() >= 1 && webserver.arg("irrigation_pause").toInt() <= 24)
+            switchesPrefs.autoIrrigationPauseHours = webserver.arg("irrigation_pause").toInt();
+        for (uint8_t i = 1; i <= NUM_RELAY; i++) {
+            sprintf(buf, "irrigation_relay%d_secs", i);
             if (webserver.arg(buf).toInt() >= 10 && webserver.arg(buf).toInt() <= switchesPrefs.pumpAutoStopSecs)
                 switchesPrefs.autoIrrigationSecs[i-1] = webserver.arg(buf).toInt();
         }
 
         if (webserver.arg("pump_autostop").toInt() >= 10 && webserver.arg("pump_autostop").toInt() <= 300)
             switchesPrefs.pumpAutoStopSecs = webserver.arg("pump_autostop").toInt();
-        if (webserver.arg("pump_blocktime").toInt() >= 60 && webserver.arg("pump_blocktime").toInt() <= 7200)
-            switchesPrefs.relaisBlockSecs = webserver.arg("pump_blocktime").toInt();
+        if (webserver.arg("pump_blocktime").toInt() >= 60 && webserver.arg("pump_blocktime").toInt() <= 2880)
+            switchesPrefs.relaysBlockMins = webserver.arg("pump_blocktime").toInt();
         if (webserver.arg("min_water_level").toInt() >= 4 && webserver.arg("min_water_level").toInt() <= 200)
             switchesPrefs.minWaterLevel = webserver.arg("min_water_level").toInt();    
         if (webserver.arg("reservoir_height").toInt() >= 10 && webserver.arg("reservoir_height").toInt() <= 200)
             switchesPrefs.waterReservoirHeight = webserver.arg("reservoir_height").toInt();
+        
+        if (webserver.arg("ignore_water_level") == "on")
+            switchesPrefs.ignoreWaterLevel = true;
+        else
+            switchesPrefs.ignoreWaterLevel = false;
 
         if (webserver.arg("logging") == "on")
             switchesPrefs.enableLogging = true;
@@ -473,7 +531,6 @@ void webserver_settimeout(uint16_t timeoutSecs) {
 void webserver_tickle() {
     webserverRequestMillis = millis();
 }
-
 
 
 bool webserver_stop(bool force) {

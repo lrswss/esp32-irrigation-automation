@@ -26,7 +26,7 @@
 #include "mqtt.h"
 #include "prefs.h"
 #include "sensors.h"
-#include "relais.h"
+#include "relay.h"
 #include "web.h"
 #include "scheduler.h"
 
@@ -40,7 +40,7 @@ void setup() {
 
     btStop();
     initPrefs();
-    initRelais();
+    initRelays();
     Serial.begin(115200);
     delay(500);
 
@@ -63,12 +63,13 @@ void setup() {
     logMsg(logmsg);
     
     initSensors();
-    #ifdef HAS_HTU21D
-    readTemp(true); 
-    #endif
-    #if defined(US_TRIGGER_PIN) && defined(US_ECHO_PIN)
-    readWaterLevel(true);
-    #endif
+#ifdef HAS_HTU21D
+    readTemp(true, true); 
+#endif
+#if defined(US_TRIGGER_PIN) && defined(US_ECHO_PIN)
+    readWaterLevel(true, true);
+#endif
+    readMoisture(true, true, true);
 
     // check wifi uplink
     // if not available start AP
@@ -125,15 +126,26 @@ void loop() {
             wifiRetry = 0;
             wifiOffline = 0;
 
+            // check for remote commands
+            if (mqtt_connect(MQTT_TIMEOUT_MS))
+                mqtt.loop();
+
             // publish current sensor readings
             if (millis() - prevMqttPublish >= (generalPrefs.mqttPushInterval * 1000)) {
                 prevMqttPublish = millis();
                 mqtt_send(MQTT_TIMEOUT_MS);
             }
 
-            // check for remote commands
-            if (mqtt_connect(MQTT_TIMEOUT_MS))
-                mqtt.loop();
+            // retry ntp sync every minute if time is not set
+            if (getLocalTime() < 1609455600 && !(busyTime % 60))
+                startNTPSync();
+
+            // log sensor readings every hour
+            if (!(busyTime % 3600)) {
+                readTemp(true, true);
+                readWaterLevel(true, true);
+                readMoisture(true, true, false);  
+            }
 
             // sync RTC, check for log rotation
             if (!strcmp("04:30:00", getTimeString(true))) {
@@ -143,33 +155,36 @@ void loop() {
         }
 
         // stop local AP after timeout if connection to wifi is available
-        if (!(busyTime % 10) && busyTime >= AP_TIMEOUT_SECS && wifi_uplink(false))
+        if (!(busyTime % 5) && busyTime >= AP_TIMEOUT_SECS && wifi_uplink(false))
             wifi_hotspot(false);
 
         // read sensors
-        if (!(busyTime % 20)) {
-            readTemp(false);
-            readWaterLevel(true);
+        if (!(busyTime % 15)) {
+            readTemp(true, false);
+            readWaterLevel(true, false);
+            readMoisture(true, false, false); // updates moving avg if enabled
         }
 
         // daily irrigation scheduler (fall back watering)
+        // triggers consecutive valve jobs at given time (HH:MM)
         if (switchesPrefs.enableAutoIrrigation && !jobs_scheduled() && 
                 !strcmp(switchesPrefs.autoIrrigationTime, getTimeString(false))) {
             scheduler_start = millis();
             for (uint8_t i = 1, j = 0; i < (sizeof(pinmap) / sizeof(pinmap[0])); i++) {
-                Serial.println(i);
-                if ((getLocalTime() - pintime[i]) > (switchesPrefs.autoIrrigationThresholdHours * 3600000)) {
-                    if (switchesPrefs.autoIrrigationSecs[i] > 0) {
-                        schedule_job(&valvejobs[j], (scheduler_start + (i * 1000)), setRelais, i, true);
-                        schedule_job(&valvejobs[j+1], (scheduler_start + (i + switchesPrefs.autoIrrigationSecs[i]) * 1000), setRelais, i, false);
-                        scheduler_start = scheduler_start + ((i + switchesPrefs.autoIrrigationSecs[i]) * 1000) + 5000;
+                // only schedule valve if it hasn't been used within given time range to avoid overwatering
+                if ((getLocalTime() - pintime[i]) > (switchesPrefs.autoIrrigationPauseHours * 3600)) {
+                    if (switchesPrefs.autoIrrigationSecs[i-1] > 0) {
+                        // schedule a start and stop job for a valve with configured runtime
+                        schedule_job(&valvejobs[j], (scheduler_start + (i * 1000)), setRelay, i, true);
+                        schedule_job(&valvejobs[j+1], (scheduler_start + (i + switchesPrefs.autoIrrigationSecs[i-1]) * 1000), setRelay, i, false);
+                        scheduler_start = scheduler_start + ((i + switchesPrefs.autoIrrigationSecs[i-1]) * 1000) + 5000;
                         j = j + 2;
                     }
                 }
             }
         }
 
-        unblockRelais();
+        unblockRelays();
         pumpAutoStop();
 
 #ifdef DEBUG_MEMORY
@@ -179,6 +194,6 @@ void loop() {
     }
 
     webserver.handleClient(); // handle webserver requests
-    scheduler();
+    scheduler(); // trigger scheduled jobs
     esp_task_wdt_reset(); // feed the dog...
 }

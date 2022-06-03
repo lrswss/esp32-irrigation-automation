@@ -24,17 +24,22 @@
 #include <Arduino.h>
 #include <HTU21D.h>
 #include <HCSR04.h>
+#include <driver/adc.h>
+
+#define MOISTURE_MA_WINDOW_SIZE 5
 
 typedef struct  {
     float temperature;
     uint8_t humidity;
     int16_t waterLevel;
+    int16_t moisture[4];
 } sensorReadings_t;
 
 extern sensorReadings_t sensors;
 
 void initSensors();
-void readTemp(bool verbose);
-void readWaterLevel(bool verbose);
+void readTemp(bool verbose, bool log);
+void readWaterLevel(bool verbose, bool log);
+void readMoisture(bool verbose, bool log, bool reset);
 
 #endif

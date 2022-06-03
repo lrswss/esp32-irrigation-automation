@@ -29,7 +29,7 @@
 #define MAX_JOBS 16
 
 typedef struct valvejob_t valvejob_t;
-typedef void (*jobfn_t)(uint8_t, bool);  // setRelais()
+typedef void (*jobfn_t)(uint8_t, bool);  // setRelay()
 
 extern valvejob_t valvejobs[MAX_JOBS];
 
@@ -37,11 +37,11 @@ struct valvejob_t {
     struct valvejob_t* next;
     time_t time;
     jobfn_t func;
-    uint8_t relais;
+    uint8_t relay;
     bool state;
 };
 
-void schedule_job (valvejob_t* job, time_t time, jobfn_t func, uint8_t relais, bool state);
+void schedule_job (valvejob_t* job, time_t time, jobfn_t func, uint8_t relay, bool state);
 bool jobs_scheduled();
 void scheduler();
 

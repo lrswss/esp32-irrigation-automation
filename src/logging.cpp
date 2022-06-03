@@ -36,8 +36,8 @@ static bool fsInited = true;
 void initLogging() {
     uint32_t freeBytes;
     
-    if (LITTLEFS.begin(true)) {
-        freeBytes = LITTLEFS.totalBytes() * 0.95 - LITTLEFS.usedBytes();
+    if (LittleFS.begin(true)) {
+        freeBytes = LittleFS.totalBytes() * 0.95 - LittleFS.usedBytes();
         Serial.print(F("LittleFS mounted: "));
         Serial.print(freeBytes/1024);
         Serial.println(F(" kb free"));
@@ -60,7 +60,7 @@ void logMsg(const char *msg) {
 
     now = getLocalTime();
     localtime_r(&now, &tm);
-    logfile = LITTLEFS.open(LOGFILE_NAME, "a");
+    logfile = LittleFS.open(LOGFILE_NAME, "a");
     if (logfile) {
         sprintf(timeStr, "%4d-%.2d-%.2dT%.2d:%.2d:%.2d", 
             tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, 
@@ -77,8 +77,8 @@ bool handleSendFile(String path) {
     if (!switchesPrefs.enableLogging || !fsInited)
         return false;
 
-    if (LITTLEFS.exists(path)) {
-        File file = LITTLEFS.open(path, "r");
+    if (LittleFS.exists(path)) {
+        File file = LittleFS.open(path, "r");
         if (file) {
             Serial.print(millis());
             Serial.printf(": Sending file %s (%d bytes)...\n", file.name(), file.size());
@@ -97,7 +97,7 @@ void listDirectory(const char* dir) {
     if (!switchesPrefs.enableLogging || !fsInited)
         return;
 
-    rootDir = LITTLEFS.open(dir);
+    rootDir = LittleFS.open(dir);
     file = rootDir.openNextFile();
     Serial.println(F("Contents of root directory: "));
     while (file) {
@@ -116,7 +116,7 @@ String listDirHTML(const char* path) {
     if (!switchesPrefs.enableLogging || !fsInited)
        return listing;
 
-    File root = LITTLEFS.open("/");
+    File root = LittleFS.open("/");
     File file = root.openNextFile();
     while (file) {
         listing += "<a href=\"";
@@ -139,7 +139,7 @@ void removeLogs() {
     if (!switchesPrefs.enableLogging || !fsInited)
         return;
 
-    rootDir = LITTLEFS.open("/");
+    rootDir = LittleFS.open("/");
     file = rootDir.openNextFile();
     while (file) {
         filename = "/" + String(file.name());
@@ -148,7 +148,7 @@ void removeLogs() {
         Serial.print(F(": Removing file "));
         Serial.print(filename);
         Serial.print(F("..."));
-        if (LITTLEFS.remove(filename))
+        if (LittleFS.remove(filename))
             Serial.println("ok.");
         else
             Serial.println("failed!");
@@ -162,25 +162,25 @@ void rotateLogs() {
   String fOld, fNew;
   int maxFiles = 0;
 
-  File file = LITTLEFS.open(LOGFILE_NAME, "r");
+  File file = LittleFS.open(LOGFILE_NAME, "r");
   if (file && file.size() > LOGFILE_MAX_SIZE) {
     file.close();
-    maxFiles = int(LITTLEFS.totalBytes() * 0.95 / LOGFILE_MAX_SIZE) - 1;
+    maxFiles = int(LittleFS.totalBytes() * 0.95 / LOGFILE_MAX_SIZE) - 1;
     maxFiles = max(LOGFILE_MAX_FILES, maxFiles);
-    LITTLEFS.remove(String(LOGFILE_NAME) + "." + LOGFILE_MAX_FILES); // remove oldest log file
+    LittleFS.remove(String(LOGFILE_NAME) + "." + LOGFILE_MAX_FILES); // remove oldest log file
     for (uint8_t i = maxFiles; i > 1; i--) {
       fOld = String(LOGFILE_NAME) + "." + String(i - 1);
       fNew = String(LOGFILE_NAME) + "." + i;
-      if (LITTLEFS.exists(fOld)) {
+      if (LittleFS.exists(fOld)) {
         Serial.print(fOld); Serial.print(" -> "); Serial.println(fNew);
-        LITTLEFS.rename(fOld, fNew);
+        LittleFS.rename(fOld, fNew);
         esp_task_wdt_reset();
       }
     }
     fOld = String(LOGFILE_NAME);
     fNew = String(LOGFILE_NAME) + "." + 1;
     Serial.print(fOld); Serial.print(" -> "); Serial.println(fNew);
-    LITTLEFS.rename(fOld, fNew);
+    LittleFS.rename(fOld, fNew);
   }
 }
 
@@ -196,12 +196,12 @@ void sendAllLogs() {
     return;
 
     // determine total size of all files (for content-size header)
-    file = LITTLEFS.open(LOGFILE_NAME, "r");
+    file = LittleFS.open(LOGFILE_NAME, "r");
     if (file)
         totalSize = file.size();
     for (uint8_t i = LOGFILE_MAX_FILES; i >= 1; i--) {
         logFile = String(LOGFILE_NAME) + "." + i;
-        file = LITTLEFS.open(logFile, "r");
+        file = LittleFS.open(logFile, "r");
         if (file)
         totalSize += file.size();
     }
@@ -218,11 +218,11 @@ void sendAllLogs() {
     // finally stream all files to client in one chunck
     for (uint8_t i = LOGFILE_MAX_FILES; i >= 1; i--) {
         logFile = String(LOGFILE_NAME) + "." + i;
-        file = LITTLEFS.open(logFile, "r");
+        file = LittleFS.open(logFile, "r");
         if (file)
             client.write(file);
     }
-    file = LITTLEFS.open(LOGFILE_NAME, "r");
+    file = LittleFS.open(LOGFILE_NAME, "r");
     if (file)
         client.write(file);
     client.flush();

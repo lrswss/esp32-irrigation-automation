@@ -19,8 +19,8 @@
 
 ***************************************************************************/
 
-#ifndef _RELAIS_H
-#define _REALIS_H
+#ifndef _RELAY_H
+#define _RELAY_H
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -29,10 +29,10 @@ extern uint16_t pinmap[5][3];
 extern char pinnames[5][7];
 extern uint32_t pintime[];
 
-void initRelais();
-void setRelais(uint8_t num, bool on);
-void unblockRelais();
-uint16_t relaisStatus(char* buf, size_t s);
+void initRelays();
+void setRelay(uint8_t num, bool on);
+void unblockRelays();
+uint16_t relayStatus(char* buf, size_t s);
 void pumpAutoStop();
 
 

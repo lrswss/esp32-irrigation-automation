@@ -20,12 +20,12 @@
 
 const char HEADER_html[] PROGMEM = R"=====(
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="author" content="(c) 2021-2022 Lars Wessels, Karlsruhe, GERMANY">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Bewässerungsautomat</title>
+<title>Automatic Irrigation system</title>
 <style>
 body{text-align:center;font-family:verdana;background:white;}
 div,fieldset,input,select{padding:5px;font-size:1em;}
@@ -72,7 +72,7 @@ var suspendReadings = false;
 function restartSystem() {
   var xhttp = new XMLHttpRequest();
   suspendReadings = true;
-  if (confirm("System wirklich neustarten?")) {
+  if (confirm("Restart system?")) {
     document.getElementById("wifiOffline").style.display = "none";
     document.getElementById("sysRestart").style.display = "block";
     document.getElementById("message").style.height = "16px";
@@ -273,27 +273,27 @@ function setValve(pin) {
 <body onload="initPage();">
 <div style="text-align:left;display:inline-block;min-width:340px;">
 <div style="text-align:center;">
-<h2 id="heading">Bewässerung __SYSTEMID__</h2>
+<h2 id="heading">Irrigation __SYSTEMID__</h2>
 <div id="message" style="display:none;margin-top:10px;margin-bottom:8px;color:red;text-align:center;font-weight:bold;max-width:335px">
-<span id="sysRestart" style="display:none">System wird neu gestartet...</span>
-<span id="wifiOffline" style="display:none">Kein WiFi uplink!</span>
-<span id="waterLevelErr" style="display:none">Wasserstand prüfen!</span>
-<span id="waterLevelIgnored" style="display:none">Wasserstand wird ignoriert!</span>
+<span id="sysRestart" style="display:none">Restarting system...</span>
+<span id="wifiOffline" style="display:none">No WiFi uplink!</span>
+<span id="waterLevelErr" style="display:none">Check water level!</span>
+<span id="waterLevelIgnored" style="display:none">Ignoring water level!</span>
 </div>
-<noscript>Bitte JavaScript aktivieren!<br /></noscript>
+<noscript>Please activate JavaScript!<br /></noscript>
 </div>
 <div id="readings" style="margin-top:0px">
 <table style="min-width:340px">
-  <tr><th>Systemzeit (<span id="TZ">---</span>):</th><td><span id="Date">--.--.--</span> <span id="Time">--:--</span></td></tr>
-  <tr><th>Laufzeit (netto):</th><td><span id="Runtime">--d --h --m</span></td></tr>
-  <tr id="TempInfo" style="display:none;"><th>Temperatur:</th><td><span id="Temp">--</span> &deg;C</td></tr>
-  <tr id="HumInfo" style="display:none;"><th>Luftfeuchtigkeit:</th><td><span id="Hum">--</span> %</td></tr>
-  <tr id="LevelInfo" style="display:none;"><th>Wasserstand:</th><td><span id="Level">--</span> cm</td></tr>
+  <tr><th>Local time (<span id="TZ">---</span>):</th><td><span id="Date">--.--.--</span> <span id="Time">--:--</span></td></tr>
+  <tr><th>Runtime (netto):</th><td><span id="Runtime">--d --h --m</span></td></tr>
+  <tr id="TempInfo" style="display:none;"><th>Temperature:</th><td><span id="Temp">--</span> &deg;C</td></tr>
+  <tr id="HumInfo" style="display:none;"><th>Relative Humidity:</th><td><span id="Hum">--</span> %</td></tr>
+  <tr id="LevelInfo" style="display:none;"><th>Water reservoir level:</th><td><span id="Level">--</span> cm</td></tr>
   <tr id="HeapInfo" style="display:none;"><th>Free Heap Memory:</th><td><span id="Heap">-------</span> bytes</td></tr>
 </table>
 </div>
 <div id="valves" style="margin-top:10px;">
-<fieldset><legend><b>&nbsp;Manuelle Ventilsteuerung&nbsp;</b></legend>
+<fieldset><legend><b>&nbsp;Manual valve control&nbsp;</b></legend>
 <table style="min-width:325px">
   <tr id="switch_valve1" style="display:none"><th>__RELAY1_LABEL__</th><td><label class="switch"><input id="valve1" type="checkbox" onclick="setValve(1);"><span id="valve1_slider" class="slider"></span></label></td></tr>
   <tr id="switch_valve2" style="display:none"><th>__RELAY2_LABEL__</th><td><label class="switch"><input id="valve2" type="checkbox" onclick="setValve(2);"><span id="valve2_slider" class="slider"></span></label></td></tr>
@@ -303,7 +303,7 @@ function setValve(pin) {
 </fieldset>
 </div>
 <div id="moisture" style="margin-top:10px;display:none">
-<fieldset><legend><b>&nbsp;Sensoren Bodenfeuchte&nbsp;</b></legend>
+<fieldset><legend><b>&nbsp;Soil moisture sensors&nbsp;</b></legend>
 <table style="min-width:325px">
   <tr id="sensor_moist1" style="display:none"><th>__MOIST1_LABEL__</th><td><span id="Moist1">--</span></td></tr>
   <tr id="sensor_moist2" style="display:none"><th>__MOIST2_LABEL__</th><td><span id="Moist2">--</span></td></tr>
@@ -313,10 +313,10 @@ function setValve(pin) {
 </fieldset>
 </div>
 <div id="buttons" style="margin-top:10px">
-<p><button onclick="location.href='/config';">Einstellungen</button></p>
-<p id="logfileDownload" style="display:none;"><button onclick="location.href='/logs';">Logdateien herunterladen</button></p>
-<p><button onclick="location.href='/update';">Firmware aktualisieren</button></p>
-<p><button class="button bred" onclick="restartSystem();">System neustarten</button></p>
+<p><button onclick="location.href='/config';">Main Settings</button></p>
+<p id="logfileDownload" style="display:none;"><button onclick="location.href='/logs';">Download log files</button></p>
+<p><button onclick="location.href='/update';">Update firmware</button></p>
+<p><button class="button bred" onclick="restartSystem();">Restart system</button></p>
 </div>
 )=====";
 
@@ -338,20 +338,20 @@ const char UPDATE_html[] PROGMEM = R"=====(
 <body>
 <div style="text-align:left;display:inline-block;min-width:340px;">
 <div style="text-align:center;">
-<h2>Firmware-Update</h2>
+<h2>Firmware update</h2>
 </div>
 <div style="margin-left:50px;margin-bottom:10px">
-1. Firmware-Datei ausw&auml;hlen<br>
-2. Aktualisierung starten<br>
-3. Upload dauert ca. 20 Sek.<br>
-4. System neu starten
+1. Select firmware file<br>
+2. Start update<br>
+3. Upload will take about 20 sec.<br>
+4. Restart system
 </div>
 <div>
 <form method="POST" action="/update" enctype="multipart/form-data" id="upload_form">
   <input type="file" name="update">
-  <p><button class="button bred" type="submit">Aktualisierung durchf&uuml;hren</button></p>
+  <p><button class="button bred" type="submit">Start firmware update</button></p>
 </form>
-<p><button onclick="location.href='/';">Startseite</button></p>
+<p><button onclick="location.href='/';">Main page</button></p>
 </div>
 )=====";
 
@@ -361,11 +361,11 @@ const char UPDATE_ERR_html[] PROGMEM = R"=====(
 <body>
 <div style="text-align:left;display:inline-block;min-width:340px;">
 <div style="text-align:center;">
-<h2>Firmware-Update<br />fehlgeschlagen</h2>
+<h2>Firmware update<br />failed</h2>
 </div>
 <div>
-<p><button onclick="location.href='/update';">Update wiederholen</button></p>
-<p><button onclick="location.href='/';">Startseite</button></p>
+<p><button onclick="location.href='/update';">Retry update</button></p>
+<p><button onclick="location.href='/';">Main page</button></p>
 </div>
 )=====";
 
@@ -396,14 +396,14 @@ function clearSettings() {
 <body>
 <div style="text-align:left;display:inline-block;min-width:340px;">
 <div style="text-align:center;">
-<h2 id="heading">Firmware-Update<br />erfolgreich</h2>
+<h2 id="heading">Firmware update<br />erfolgreich</h2>
 <div id="message" style="display:none;margin-top:8px;color:red;font-weight:bold;height:16px;text-align:center;max-width:335px">
-<span id="sysReset" style="display:none">System wird zurückgesetzt...<br></span>
+<span id="sysReset" style="display:none">Resetting system...<br></span>
 </div>
 </div>
 <div>
-<p><button class="button bred" onclick="clearSettings(); resetSystem();">System zurücksetzen</button></p>
-<p><button onclick="location.href='/';">Startseite</button></p>
+<p><button class="button bred" onclick="clearSettings(); resetSystem();">Reset system</button></p>
+<p><button onclick="location.href='/';">Main page</button></p>
 </div>
 )=====";
 
@@ -412,7 +412,7 @@ const char LOGS_HEADER_html[] PROGMEM = R"=====(
 <script>
 function deleteLogs() {
   var xhttp = new XMLHttpRequest();
-  if (confirm("Wirklich alle Dateien löschen?")) {
+  if (confirm("Sure to delete all files?")) {
     xhttp.open("GET", "/rmlogs", true);
     xhttp.send();
     document.getElementById("filelist").style.display = "none";
@@ -433,9 +433,9 @@ function deleteLogs() {
 const char LOGS_FOOTER_html[] PROGMEM = R"=====(
 </div>
 <div>
-<p><button class="button bred" onclick="deleteLogs();">Logdateien l&ouml;schen</button></p>
-<p><button onclick="location.href='/sendlogs';">Logdateien herunterladen</button></p>
-<p><button onclick="location.href='/';">Startseite</button></p>
+<p><button class="button bred" onclick="deleteLogs();">Delete log files</button></p>
+<p><button onclick="location.href='/sendlogs';">Download log files</button></p>
+<p><button onclick="location.href='/';">Main page</button></p>
 </div>
 )=====";
 
@@ -452,7 +452,7 @@ function hideMessages() {
 function clearSettings() {
   var xhttp = new XMLHttpRequest();
   suspendReadings = true;
-  if (confirm("Alle Einstellungen zurücksetzen?")) {
+  if (confirm("Reset all system settings?")) {
     xhttp.open("GET", "/delnvs", true);
     xhttp.send();
     setTimeout(function(){location.href='/config?reset';}, 500);
@@ -489,7 +489,7 @@ function checkInput() {
     }
 
     if (document.getElementById("checkbox_ignore_water_level").checked == true) {
-      alert("Wenn der Wasserstand nicht berücksichtigt wird, kann die Wasserpumpe trockenlaufen und beschädigt werden!")
+      alert("Ignoring the water reservoir level, may cause the water pump to run dry and become damaged!")
     }
   }
 
@@ -539,60 +539,60 @@ function toggleWaterLevel() {
 <body onload="configSaved(); toggleAutoIrrigation(); toggleWaterLevel();">
 <div style="text-align:left;display:inline-block;min-width:340px;">
 <div style="text-align:center;">
-<h2 id="heading">Einstellungen</h2>
+<h2 id="heading">Main Settings</h2>
 <div id="message" style="display:none;margin-top:10px;color:red;font-weight:bold;text-align:center;max-width:335px">
-<span id="configSaved" style="display:none;color:green">Einstellungen gespeichert</span>
-<span id="timeError" style="display:none">Uhrzeitformat prüfen (HH:MM)</span>
-<span id="irrTimeError" style="display:none">Dauer Bewässerungszeiten prüfen!</span>
+<span id="configSaved" style="display:none;color:green">Save settings</span>
+<span id="timeError" style="display:none">Check syntax for time (HH:MM)!</span>
+<span id="irrTimeError" style="display:none">Check watering times!</span>
 </div>
 </div>
 
 <div style="max-width:335px;margin-top:10px;">
 <form method="POST" action="/config" onsubmit="return checkInput();">
-  <fieldset><legend><b>&nbsp;Automatische Bewässerung&nbsp;</b></legend>
-  <p><input id="checkbox_auto_irrigation" name="auto_irrigation" type="checkbox" __AUTO_IRRIGATION__ onclick="toggleAutoIrrigation();"><b>Aktivieren</b></p>
+  <fieldset><legend><b>&nbsp;Daily Automatic Irrigation&nbsp;</b></legend>
+  <p><input id="checkbox_auto_irrigation" name="auto_irrigation" type="checkbox" __AUTO_IRRIGATION__ onclick="toggleAutoIrrigation();"><b>Enable</b></p>
   <span style="display:none" id="auto_irrigation">
-  <p><b>Uhrzeit (HH:MM)</b><br />
+  <p><b>Time (HH:MM)</b><br />
   <input id="input_irrigation_time" name="irrigation_time" type="text" value="__IRRIGATION_TIME__" maxlength="5" onkeyup="timeOnly(this);"></p>
-  <p><b>Min. Bewässerungspause (Std.)</b><br />
+  <p><b>Time since last irrigation (hours)</b><br />
   <input id="input_irrigation_pause" name="irrigation_pause" type="text" value="__IRRIGATION_PAUSE__" maxlength="2" onkeyup="digitsOnly(this);"></p>
-  <p><b>__RELAY1_LABEL__ (Sek.)</b><br />
+  <p><b>__RELAY1_LABEL__ (sec.)</b><br />
   <input id="input_irrigation_relay1" name="irrigation_relay1_secs" type="text" value="__IRRIGATION_RELAY1_SECS__" maxlength="3" onkeyup="digitsOnly(this);"></p>
-  <p><b>__RELAY2_LABEL__ (Sek.)</b><br />
+  <p><b>__RELAY2_LABEL__ (sec.)</b><br />
   <input id="input_irrigation_relay2" name="irrigation_relay2_secs" type="text" value="__IRRIGATION_RELAY2_SECS__" maxlength="3" onkeyup="digitsOnly(this);"></p>
-  <p><b>__RELAY3_LABEL__ (Sek.)</b><br />
+  <p><b>__RELAY3_LABEL__ (sec.)</b><br />
   <input id="input_irrigation_relay3" name="irrigation_relay3_secs" type="text" value="__IRRIGATION_RELAY3_SECS__" maxlength="3" onkeyup="digitsOnly(this);"></p>
-  <p><b>__RELAY4_LABEL__ (Sek.)</b><br />
+  <p><b>__RELAY4_LABEL__ (sec.)</b><br />
   <input id="input_irrigation_relay4" name="irrigation_relay4_secs" type="text" value="__IRRIGATION_RELAY4_SECS__" maxlength="3" onkeyup="digitsOnly(this);"></p>
   </span>
   </fieldset>
   <br />
   
-  <fieldset><legend><b>&nbsp;Wasserpumpe&nbsp;</b></legend>
-  <p><b>Autoabschaltung (Sek.)</b><br />
+  <fieldset><legend><b>&nbsp;Water pump&nbsp;</b></legend>
+  <p><b>Pump auto-stop (sec.)</b><br />
   <input id="input_pump_autostop" name="pump_autostop" type="text" value="__PUMP_AUTOSTOP__" maxlength="3" onkeyup="digitsOnly(this);"></p>
-  <p><b>Bewässerungssperre (Min.)</b><br />
+  <p><b>Block irrigation (min.)</b><br />
   <input id="input_pump_blocktime" name="pump_blocktime" type="text" value="__PUMP_BLOCKTIME__" maxlength="4" onkeyup="digitsOnly(this);"></p>
-  <p><b>Höhe des Wasserbehälters (cm)</b><br />
+  <p><b>Water reservoir height (cm)</b><br />
   <input id="input_reservoir_height" name="reservoir_height" type="text" value="__RESERVOIR_HEIGHT__" maxlength="3" onkeyup="digitsOnly(this);"></p>
   <span id="input_min_water_level">
-  <p><b>Minimaler Wasserstand (cm)</b><br />
+  <p><b>Min. water level (cm)</b><br />
   <input name="min_water_level" type="text" value="__MIN_WATER_LEVEL__" maxlength="3" onkeyup="digitsOnly(this);"></p></span>
-  <p><input id="checkbox_ignore_water_level" name="ignore_water_level" type="checkbox" __IGNORE_WATER_LEVEL__ onclick="toggleWaterLevel();"><b>Wasserstand ignorieren</b></p>
+  <p><input id="checkbox_ignore_water_level" name="ignore_water_level" type="checkbox" __IGNORE_WATER_LEVEL__ onclick="toggleWaterLevel();"><b>Ignore water level</b></p>
   </fieldset>
   <br />
 
-  <fieldset><legend><b>&nbsp;Sonstiges&nbsp;</b></legend>
-  <p><input id="checkbox_logging" name="logging" type="checkbox" __LOGGING__ onclick="toggleLogging();"><b>Protokollierung aktivieren</b></p>
+  <fieldset><legend><b>&nbsp;Other options&nbsp;</b></legend>
+  <p><input id="checkbox_logging" name="logging" type="checkbox" __LOGGING__ onclick="toggleLogging();"><b>Enable logging</b></p>
   </fieldset>
   <br />
 
-  <p><button class="button bred" type="submit">Einstellungen speichern</button></p>
+  <p><button class="button bred" type="submit">Save settings</button></p>
 </form>
-<!-- <p><button class="button bred" onclick="clearSettings(); return false;">Einstellungen zur&uuml;cksetzen</button></p> -->
-<p><button onclick="location.href='/pins';">Anschlussbelegung</button></p>
-<p><button onclick="location.href='/network';">Netzwerkeinstellungen</button></p>
-<p><button onclick="location.href='/';">Startseite</button></p>
+<!-- <p><button class="button bred" onclick="clearSettings(); return false;">Reset all settings</button></p> -->
+<p><button onclick="location.href='/pins';">Pin assignments</button></p>
+<p><button onclick="location.href='/network';">Network settings</button></p>
+<p><button onclick="location.href='/';">Main page</button></p>
 </div>
 )=====";
 
@@ -659,48 +659,48 @@ function toggleMQTTAuth() {
 <body onload="initPage(); configSaved(); toggleMQTTAuth();">
 <div style="text-align:left;display:inline-block;min-width:340px;">
 <div style="text-align:center;">
-<h2 id="heading">Netzwerkeinstellungen</h2>
+<h2 id="heading">Network settings</h2>
 <div id="message" style="display:none;margin-top:10px;color:red;font-weight:bold;text-align:center;max-width:335px">
-<span id="configSaved" style="display:none;color:green">Einstellungen gespeichert</span>
-<span id="appassError" style="display:none">Passwort f&uuml;r Access-Point zu kurz!</span>
+<span id="configSaved" style="display:none;color:green">Settings saved</span>
+<span id="appassError" style="display:none">Password for AP too short!</span>
 </div>
 </div>
 
 <div style="max-width:335px;margin-top:10px;">
 <form method="POST" action="/network" onsubmit="return checkInput();">
-  <fieldset><legend><b>&nbsp;WLAN&nbsp;</b></legend>
-  <p><b>Netzwerkkennung (SSID)</b><br />
+  <fieldset><legend><b>&nbsp;WiFi&nbsp;</b></legend>
+  <p><b>WiFi uplink SSID</b><br />
   <input id="input_stassid" name="stassid" size="16" maxlength="32" value="__STA_SSID__"></p>
-  <p><b>Passwort (optional)</b><br />
+  <p><b>Password for SSID (optional)</b><br />
   <input id="input_stapassword" type="password" name="stapassword" size="16" maxlength="32" value="__STA_PASSWORD__"></p>
-  <p><b>Passwort f&uuml;r lokalen Access-Point</b><br />
+  <p><b>Password for local access point</b><br />
   <input id="input_appassword" type="password" name="appassword" size="16" maxlength="32" value="__AP_PASSWORD__"></p>
   </fieldset>
   <br />
   
   <fieldset><legend><b>&nbsp;MQTT&nbsp;</b></legend>
-  <p><b>Adresse des Brokers</b><br />
+  <p><b>Address brokers</b><br />
   <input name="mqttbroker" size="16" maxlength="64" value="__MQTT_BROKER__"></p>
-  <p><b>Topic f&uuml;r Steuerung</b><br />
+  <p><b>Control topic</b><br />
   <input name="mqtttopiccmd" size="16" maxlength="64" value="__MQTT_TOPIC_CMD__"></p>
-  <p><b>Topic f&uuml;r Nachrichten</b><br />
+  <p><b>Message topic</b><br />
   <input name="mqtttopicstate" size="16" maxlength="64" value="__MQTT_TOPIC_STATE__"></p>
-  <p><b>Nachrichteninterval (Sek.)</b><br />
+  <p><b>Message update interval (Sek.)</b><br />
   <input name="mqttinterval" value="__MQTT_INTERVAL__" maxlength="4 onkeyup="digitsOnly(this)"></p>
-  <p><input id="checkbox_mqttauth" name="mqttauth" onclick="toggleMQTTAuth();" type="checkbox" __MQTT_AUTH__><b>Authentifizierung aktivieren</b></p>
+  <p><input id="checkbox_mqttauth" name="mqttauth" onclick="toggleMQTTAuth();" type="checkbox" __MQTT_AUTH__><b>Enable authentication</b></p>
      <span style="display:none" id="mqttauth">
-     <p><b>Benutzername</b><br />
+     <p><b>Username</b><br />
      <input id="input_mqttuser" name="mqttuser" size="16" maxlength="32" value="__MQTT_USERNAME__"></p>
-     <p><b>Passwort</b><br />
+     <p><b>Password</b><br />
      <input id="input_mqttpassword" type="password" name="mqttpassword" size="16" maxlength="32" value="__MQTT_PASSWORD__"></p>
      </span>
   </fieldset>
   <br />
 
-  <p><button class="button bred" type="submit">Einstellungen speichern</button></p>
+  <p><button class="button bred" type="submit">Save settings</button></p>
 </form>
-<p><button onclick="location.href='/config';">Einstellungen</button></p>
-<p><button onclick="location.href='/';">Startseite</button></p>
+<p><button onclick="location.href='/config';">Settings</button></p>
+<p><button onclick="location.href='/';">Main page</button></p>
 </div>
 )=====";
 
@@ -809,16 +809,16 @@ function initPage() {
 <body onload="initPage(); configSaved(); toggleAutoIrrigation();">
 <div style="text-align:left;display:inline-block;min-width:340px;">
 <div style="text-align:center;">
-<h2 id="heading">Anschlussbelegung</h2>
+<h2 id="heading">Pin assignments</h2>
 <div id="message" style="display:none;margin-top:10px;color:red;font-weight:bold;text-align:center;max-width:335px">
-<span id="configSaved" style="display:none;color:green">Einstellungen gespeichert</span>
-<span id="pinError" style="display:none">Pin-Zuweisungen überprüfen!</span>
+<span id="configSaved" style="display:none;color:green">Settings saved</span>
+<span id="pinError" style="display:none">Check pin assignments!</span>
 </div>
 </div>
 
 <div style="max-width:335px;margin-top:10px;">
 <form method="POST" action="/pins" onsubmit="return checkInput();">
-  <fieldset><legend><b>&nbsp;Ventilnamen und Pins&nbsp;</b></legend>
+  <fieldset><legend><b>&nbsp;Valve names and pins&nbsp;</b></legend>
   <p id="relay1"><input id="input_relay1" class="pin_label" type="text" name="relay1_name" size="16" maxlength="24" value="__RELAY1_LABEL__"></p>
   <p id="relay2"><input id="input_relay2" class="pin_label" type="text" name="relay2_name" size="16" maxlength="24" value="__RELAY2_LABEL__"></p>
   <p id="relay3"><input id="input_relay3" class="pin_label" type="text" name="relay3_name" size="16" maxlength="24" value="__RELAY3_LABEL__"></p>
@@ -826,17 +826,17 @@ function initPage() {
   </fieldset>
   <br />
 
-  <fieldset><legend><b>&nbsp;Feuchtesensoren und Pins&nbsp;</b></legend>
+  <fieldset><legend><b>&nbsp;Moisture sensors and pins&nbsp;</b></legend>
   <p id="moist1"><input id="input_moist1" class="pin_label" type="text" name="moist1_name" size="16" maxlength="24" value="__MOIST1_LABEL__"></p>
   <p id="moist2"><input id="input_moist2" class="pin_label" type="text" name="moist2_name" size="16" maxlength="24" value="__MOIST2_LABEL__"></p>
   <p id="moist3"><input id="input_moist3" class="pin_label" type="text" name="moist3_name" size="16" maxlength="24" value="__MOIST3_LABEL__"></p>
   <p id="moist4"><input id="input_moist4" class="pin_label" type="text" name="moist4_name" size="16" maxlength="24" value="__MOIST4_LABEL__"></p>
-  <p><b>Sensormesswert für 0%</b><br />
+  <p><b>Sensor reading for 0%</b><br />
   <input id="input_moist_min" type="text" name="moisture_min" maxlength="3" value="__MOISTURE_MIN__"></p>
-  <p><b>Sensormesswert für 100%</b><br />
+  <p><b>Sensor reading for 100%</b><br />
   <p><input id="input_moist_max" type="text" name="moisture_max" maxlength="3" value="__MOISTURE_MAX__"></p>
-  <p><input id="checkbox_moisture_raw" name="moisture_raw" type="checkbox" __MOISTURE_RAW__ "><b>Sensormesswert anzeigen</b></p>
-  <p><input id="checkbox_moisture_avg" name="moisture_avg" type="checkbox" __MOISTURE_AVG__ "><b>Gleitender Durchschnitt</b></p>
+  <p><input id="checkbox_moisture_raw" name="moisture_raw" type="checkbox" __MOISTURE_RAW__ "><b>Show raw sensor readings</b></p>
+  <p><input id="checkbox_moisture_avg" name="moisture_avg" type="checkbox" __MOISTURE_AVG__ "><b>Moving Average</b></p>
   </fieldset>
   <br />
 
@@ -851,9 +851,9 @@ function initPage() {
   </fieldset>
   <br /> -->
   
-  <p><button class="button bred" type="submit">Einstellungen speichern</button></p>
+  <p><button class="button bred" type="submit">Save settings</button></p>
 </form>
-<p><button onclick="location.href='/config';">Einstellungen</button></p>
-<p><button onclick="location.href='/';">Startseite</button></p>
+<p><button onclick="location.href='/config';">Main Settings</button></p>
+<p><button onclick="location.href='/';">Main page</button></p>
 </div>
 )=====";

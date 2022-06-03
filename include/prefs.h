@@ -24,7 +24,7 @@
 #include <Arduino.h>
 #include <Preferences.h>  // use NVS instead of EEPROM (depreciated on ESP32)
 
-#define NUM_RELAIS 4
+#define NUM_RELAY 4
 #define NUM_MOISTURE_SENSORS 4
 
 typedef struct  {
@@ -43,20 +43,25 @@ typedef struct  {
 } generalPrefs_t;
 
 typedef struct {
-    uint8_t pinRelais[NUM_RELAIS];
-    char labelRelais[NUM_RELAIS][25];
-    uint8_t pinMoisture[NUM_RELAIS];
-    char labelMoisture[NUM_RELAIS][25];
+    int8_t pinRelay[NUM_RELAY];
+    char labelRelay[NUM_RELAY][25];
+    int8_t pinMoisture[NUM_MOISTURE_SENSORS];
+    char labelMoisture[NUM_MOISTURE_SENSORS][25];
     uint8_t pinPump;
     uint16_t pumpAutoStopSecs;
-    uint32_t relaisBlockSecs;
+    uint32_t relaysBlockMins;
     bool enableAutoIrrigation;
     char autoIrrigationTime[8];
     uint16_t autoIrrigationSecs[4];
-    uint8_t autoIrrigationThresholdHours;
+    uint8_t autoIrrigationPauseHours;
     bool enableLogging;
     uint8_t minWaterLevel;
+    bool ignoreWaterLevel;
     uint8_t waterReservoirHeight;
+    uint16_t moistureMin;
+    uint16_t moistureMax;
+    bool moistureRaw;
+    bool moistureMovingAvg;
 } switchesPrefs_t;
 
 extern Preferences nvs;
