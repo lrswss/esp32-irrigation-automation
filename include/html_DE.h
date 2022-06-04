@@ -646,6 +646,14 @@ function digitsOnly(input) {
   input.value = input.value.replace(regex, "");
 }
 
+function toggleMQTT() {
+  if (document.getElementById("checkbox_mqtt").checked == true) {
+    document.getElementById("mqtt").style.display = "block";
+  } else {
+    document.getElementById("mqtt").style.display = "none";
+  }
+}
+
 function toggleMQTTAuth() {
   if (document.getElementById("checkbox_mqttauth").checked == true) {
     document.getElementById("mqttauth").style.display = "block";
@@ -656,7 +664,7 @@ function toggleMQTTAuth() {
 
 </script>
 </head>
-<body onload="initPage(); configSaved(); toggleMQTTAuth();">
+<body onload="configSaved(); toggleMQTT(); toggleMQTTAuth();">
 <div style="text-align:left;display:inline-block;min-width:340px;">
 <div style="text-align:center;">
 <h2 id="heading">Netzwerkeinstellungen</h2>
@@ -679,6 +687,8 @@ function toggleMQTTAuth() {
   <br />
   
   <fieldset><legend><b>&nbsp;MQTT&nbsp;</b></legend>
+  <p><input id="checkbox_mqtt" name="mqtt" onclick="toggleMQTT();" type="checkbox" __MQTT__><b>Aktivieren</b></p>
+  <span id="mqtt" style="display:none">
   <p><b>Adresse des Brokers</b><br />
   <input name="mqttbroker" size="16" maxlength="64" value="__MQTT_BROKER__"></p>
   <p><b>Topic f&uuml;r Steuerung</b><br />
@@ -694,6 +704,7 @@ function toggleMQTTAuth() {
      <p><b>Passwort</b><br />
      <input id="input_mqttpassword" type="password" name="mqttpassword" size="16" maxlength="32" value="__MQTT_PASSWORD__"></p>
      </span>
+  </span>
   </fieldset>
   <br />
 
@@ -839,18 +850,6 @@ function initPage() {
   <p><input id="checkbox_moisture_avg" name="moisture_avg" type="checkbox" __MOISTURE_AVG__ "><b>Gleitender Durchschnitt</b></p>
   </fieldset>
   <br />
-
-  <!-- <p><input id="input_moist1" class="pin_label" type="text" name="moist1_name" size="16" maxlength="16" value="__MOIST1__">
-  <select id="select_moist1" class="pin_value" name="moist1_pin"><option value="0">-</option><option value="2">3</option></select></p>
-  <p><input id="input_moist2" class="pin_label" type="text" name="moist2_name" size="16" maxlength="16" value="__MOIST2__">
-  <select id="select_moist2" class="pin_value" name="moist2_pin"><option value="0">-</option><option value="2">3</option></select></p>
-  <p><input id="input_moist3" class="pin_label" type="text" name="moist3_name" size="16" maxlength="16" value="__MOIST3__">
-  <select id="select_moist3" class="pin_value" name="moist3_pin"><option value="0">-</option><option value="2">3</option></select></p>
-  <p><input id="input_moist4" class="pin_label" type="text" name="moist4_name" size="16" maxlength="16" value="__MOIST4__">
-  <select id="select_moist4" class="pin_value" name="moist4_pin"><option value="0">-</option><option value="2">3</option></select></p>
-  </fieldset>
-  <br /> -->
-  
   <p><button class="button bred" type="submit">Einstellungen speichern</button></p>
 </form>
 <p><button onclick="location.href='/config';">Einstellungen</button></p>

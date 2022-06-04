@@ -32,6 +32,7 @@ typedef struct  {
     char wifiApPassword[33];
     char wifiStaSSID[33];
     char wifiStaPassword[33];
+    bool enableMQTT;
     char mqttBroker[65];
     char mqttTopicCmd[65];
     char mqttTopicState[65];

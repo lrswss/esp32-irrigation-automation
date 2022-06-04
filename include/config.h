@@ -22,8 +22,8 @@
 #define _CONFIG_H
 
 // choose language for web interface
-#define LANG_DE
-//#define LANG_EN
+//#define LANG_DE
+#define LANG_EN
 
 //
 // All settings except DEBUG options can
@@ -72,7 +72,7 @@
 // use to calculate the water level
 #define WATER_RESERVOIR_HEIGHT 37
 
-// relay names and pin assigment
+// relay names (max. 24 chars) and pin assigment
 // set *_PIN to -1 to disable
 #define RELAY_PINS "13,16,17,18,19,23,25,26,27"
 #define RELAY1_PIN 19
@@ -84,7 +84,8 @@
 #define RELAY4_PIN 16
 #define RELAY4_LABEL "valve4"
 
-// pins for moisture sensor on ADC1 (optional)
+// optional capacitive moisture sensors
+// pins and labels (max. 24 chars) for moisture sensor on ADC1
 // set *_PIN to -1 to disable
 #define MOISTURE_PINS "32,33,34,36,39"
 #define MOIST1_PIN 33

@@ -227,6 +227,11 @@ void webserver_start() {
         html.replace("__MQTT_USERNAME__", String(generalPrefs.mqttUsername));
         html.replace("__MQTT_PASSWORD__", String(generalPrefs.mqttPassword));
 
+        if (generalPrefs.enableMQTT)
+            html.replace("__MQTT__", "checked");
+        else
+            html.replace("__MQTT__", "");
+
         if (generalPrefs.mqttEnableAuth)
             html.replace("__MQTT_AUTH__", "checked");
         else
@@ -246,29 +251,35 @@ void webserver_start() {
         logMsg("webui save network prefs");
 
         if (webserver.arg("appassword").length() >= 8 && webserver.arg("appassword").length() <= 32)
-            strncpy(generalPrefs.wifiApPassword, webserver.arg("appassword").c_str(), 32); 
+            strncpy(generalPrefs.wifiApPassword, webserver.arg("appassword").c_str(), 32);
         if (webserver.arg("stassid").length() >= 8 && webserver.arg("stassid").length() <= 32)
-            strncpy(generalPrefs.wifiStaSSID, webserver.arg("stassid").c_str(), 32); 
+            strncpy(generalPrefs.wifiStaSSID, webserver.arg("stassid").c_str(), 32);
         if (webserver.arg("stapassword").length() >= 8 && webserver.arg("stapassword").length() <= 32)
-            strncpy(generalPrefs.wifiStaPassword, webserver.arg("stapassword").c_str(), 32); 
+            strncpy(generalPrefs.wifiStaPassword, webserver.arg("stapassword").c_str(), 32);
 
-        if (webserver.arg("mqttbroker").length() >= 4 && webserver.arg("mqttbroker").length() <= 64)
-            strncpy(generalPrefs.mqttBroker, webserver.arg("mqttbroker").c_str(), 64); 
-        if (webserver.arg("mqtttopiccmd").length() >= 4 && webserver.arg("mqtttopiccmd").length() <= 64)
-            strncpy(generalPrefs.mqttTopicCmd, webserver.arg("mqtttopiccmd").c_str(), 64); 
-        if (webserver.arg("mqtttopicstate").length() >= 4 && webserver.arg("mqtttopicstate").length() <= 64)
-            strncpy(generalPrefs.mqttTopicState, webserver.arg("mqtttopicstate").c_str(), 64); 
-        if (webserver.arg("mqttinterval").toInt() >= 10 && webserver.arg("mqttinterval").toInt() <= 600)
-            generalPrefs.mqttPushInterval = webserver.arg("mqttinterval").toInt(); 
-        if (webserver.arg("mqttuser").length() >= 4 && webserver.arg("mqttuser").length() <= 32)
-            strncpy(generalPrefs.mqttUsername, webserver.arg("mqttuser").c_str(), 32); 
-        if (webserver.arg("mqttpassword").length() >= 4 && webserver.arg("mqttpassword").length() <= 32)
-            strncpy(generalPrefs.mqttPassword, webserver.arg("mqttpassword").c_str(), 32); 
+        if (webserver.arg("mqtt") == "on") {
+            generalPrefs.enableMQTT = true;
+            if (webserver.arg("mqttbroker").length() >= 4 && webserver.arg("mqttbroker").length() <= 64)
+                strncpy(generalPrefs.mqttBroker, webserver.arg("mqttbroker").c_str(), 64);
+            if (webserver.arg("mqtttopiccmd").length() >= 4 && webserver.arg("mqtttopiccmd").length() <= 64)
+                strncpy(generalPrefs.mqttTopicCmd, webserver.arg("mqtttopiccmd").c_str(), 64);
+            if (webserver.arg("mqtttopicstate").length() >= 4 && webserver.arg("mqtttopicstate").length() <= 64)
+                strncpy(generalPrefs.mqttTopicState, webserver.arg("mqtttopicstate").c_str(), 64);
+            if (webserver.arg("mqttinterval").toInt() >= 10 && webserver.arg("mqttinterval").toInt() <= 600)
+                generalPrefs.mqttPushInterval = webserver.arg("mqttinterval").toInt();
+        } else {
+            generalPrefs.enableMQTT = false;
+        }
 
-        if (webserver.arg("mqttauth") == "on")
+        if (webserver.arg("mqttauth") == "on") {
             generalPrefs.mqttEnableAuth = true;
-        else
+            if (webserver.arg("mqttuser").length() >= 4 && webserver.arg("mqttuser").length() <= 32)
+                strncpy(generalPrefs.mqttUsername, webserver.arg("mqttuser").c_str(), 32);
+            if (webserver.arg("mqttpassword").length() >= 4 && webserver.arg("mqttpassword").length() <= 32)
+                strncpy(generalPrefs.mqttPassword, webserver.arg("mqttpassword").c_str(), 32);
+        } else {
             generalPrefs.mqttEnableAuth = false;
+        }
 
         nvs.putBool("general", true);
         nvs.putBytes("generalPrefs", &generalPrefs, sizeof(generalPrefs));  
@@ -435,13 +446,13 @@ void webserver_start() {
             switchesPrefs.autoIrrigationPauseHours = webserver.arg("irrigation_pause").toInt();
         for (uint8_t i = 1; i <= NUM_RELAY; i++) {
             sprintf(buf, "irrigation_relay%d_secs", i);
-            if (webserver.arg(buf).toInt() >= 10 && webserver.arg(buf).toInt() <= switchesPrefs.pumpAutoStopSecs)
+            if (webserver.arg(buf).toInt() >= 0 && webserver.arg(buf).toInt() <= switchesPrefs.pumpAutoStopSecs)
                 switchesPrefs.autoIrrigationSecs[i-1] = webserver.arg(buf).toInt();
         }
 
         if (webserver.arg("pump_autostop").toInt() >= 10 && webserver.arg("pump_autostop").toInt() <= 300)
             switchesPrefs.pumpAutoStopSecs = webserver.arg("pump_autostop").toInt();
-        if (webserver.arg("pump_blocktime").toInt() >= 60 && webserver.arg("pump_blocktime").toInt() <= 2880)
+        if (webserver.arg("pump_blocktime").toInt() >= 10 && webserver.arg("pump_blocktime").toInt() <= 480)
             switchesPrefs.relaysBlockMins = webserver.arg("pump_blocktime").toInt();
         if (webserver.arg("min_water_level").toInt() >= 4 && webserver.arg("min_water_level").toInt() <= 200)
             switchesPrefs.minWaterLevel = webserver.arg("min_water_level").toInt();    

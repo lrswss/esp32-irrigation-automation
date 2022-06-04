@@ -47,17 +47,18 @@ static void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 
 
 // set mqtt client name and callback function for subscribed topics
-static void mqtt_init() {
+static bool mqtt_init() {
     String name;
     static bool mqttInited = false;
 
-    if (!mqttInited) {
+    if (!mqttInited && generalPrefs.enableMQTT) {
         mqtt.setServer(generalPrefs.mqttBroker, MQTT_PORT);
         name = String(MQTT_CLIENT_NAME).substring(0,48) + "-" + systemID() + "-" + String(random(0xffff), HEX);
         sprintf(clientname, name.c_str(), name.length());
         mqtt.setCallback(mqtt_callback);
         mqttInited = true;
     }
+    return mqttInited;
 }
 
 
@@ -67,7 +68,9 @@ bool mqtt_connect(uint16_t timeoutMillis) {
     static uint32_t lastFail = 0;
     uint8_t retries = 0;
 
-    mqtt_init();
+    if (!mqtt_init())
+        return false;
+
     if (mqtt.connected())
         return true;
 
@@ -78,7 +81,7 @@ bool mqtt_connect(uint16_t timeoutMillis) {
     }
 
     // wait 30 sec before trying to connect after previous fail
-    if ((millis() - lastFail) < (MQTT_CONNECT_RETRY_SECS * 1000))
+    if (lastFail > 0 && (millis() - lastFail) < (MQTT_CONNECT_RETRY_SECS * 1000))
         return false;
 
     Serial.print(millis());

@@ -30,6 +30,11 @@ RTC_DATA_ATTR generalPrefs_t generalPrefs = {
     WIFI_AP_PASSWORD,
     WIFI_STA_SSID,
     WIFI_STA_PASSWORD,
+#ifdef MQTT_BROKER
+    true,
+#else
+    false,
+#endif
     MQTT_BROKER,
     MQTT_TOPIC_CMD,
     MQTT_TOPIC_STATE,
