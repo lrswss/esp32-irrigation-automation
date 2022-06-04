@@ -27,7 +27,7 @@ to the little red drip valves in the four main branches of the irrigation
 system did not produce the desired results. Some plants were over-watered
 others needed an extra shot from a water can.
 
-When we began to grow the tomatoes this April, I deciced to improve
+When we began to grow the tomatoes this April, I decided to improve
 and automate the drip system with an ESP32 which should receive commands
 from automations in [Home Assistant](https://www.home-assistant.io). The
 basic idea was to control the four irrigation branches separately with
@@ -110,9 +110,10 @@ use the OTA option in the web interface.
 ## Initial setup and configuration
 
 On first boot up the ESP32 will start a local access point with the SSID
-"Irrigation-System-XXXXXX" (IP 192.168.4.1) for initial configuration unless
-you preset your Wifi credentials in `include/config.h` at compile time. Set
-your SSID and password and reboot the system.
+`Irrigation-System-XXXXXX` with password `__secret__` on IP 192.168.4.1 for
+initial configuration unless you preset your Wifi credentials in `include/config.h`
+at compile time. Set your SSID and password under network settings and
+reboot the system.
 
 After successful connection to your Wifi the ESP32 will request an IP address
 from your router or DHCP server (check output on serial monitor). Point your
